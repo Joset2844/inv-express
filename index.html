@@ -83,6 +83,12 @@
 
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
+  .chip-group{display:flex;gap:8px;margin-bottom:12px;}
+  .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 8px;border-radius:6px;border:1px solid var(--border-input);background:#fff;font-size:.82rem;font-weight:500;cursor:pointer;color:var(--muted);}
+  .chip.active{background:var(--dark);border-color:var(--dark);color:#fff;}
+  .chip.active .chip-dot{background:var(--amber);}
+  .chip-dot{width:8px;height:8px;border-radius:50%;background:var(--border-input);flex-shrink:0;}
+
   .suggest-box{position:absolute;z-index:20;width:100%;margin-top:2px;background:#fff;border:1px solid var(--border-input);border-radius:6px;max-height:220px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.12);}
   .suggest-item{width:100%;text-align:left;padding:9px 11px;border:none;background:none;border-bottom:1px solid #EEE;cursor:pointer;display:block;font-size:.78rem;}
   .suggest-item:last-child{border-bottom:none;}
@@ -209,13 +215,22 @@
         <input type="text" id="clienteInput" placeholder="Se autocompleta con la OP" />
       </div>
 
+      <div class="chip-group">
+        <button type="button" class="chip active" id="chipCaja" data-tipo="caja">
+          <span class="chip-dot"></span> Caja
+        </button>
+        <button type="button" class="chip" id="chipPaquete" data-tipo="paquete">
+          <span class="chip-dot"></span> Paquete
+        </button>
+      </div>
+
       <div class="row2">
         <div class="field">
-          <label>Unid. x caja</label>
+          <label id="labelUnidades">Unid. x caja</label>
           <input type="number" min="0" id="unidadesInput" class="mono" placeholder="0" />
         </div>
         <div class="field">
-          <label>Cant. cajas</label>
+          <label id="labelCantidad">Cant. cajas</label>
           <input type="number" min="0" id="cajasInput" class="mono" placeholder="0" />
         </div>
       </div>
@@ -331,6 +346,15 @@
       var l = localStorage.getItem(STORAGE_LISTA);
       if(l) lista = JSON.parse(l);
     }catch(e){}
+    // migración: piezas guardadas antes de que existiera el tipo caja/paquete
+    var huboMigracion = false;
+    lista.forEach(function(item){
+      if(!item.tipoEmpaque){
+        item.tipoEmpaque = "caja";
+        huboMigracion = true;
+      }
+    });
+    if(huboMigracion) guardarLista();
   }
 
   function guardarCatalogo(){
@@ -360,7 +384,25 @@
       btnExportar = $("btnExportar"), emptyCatalog = $("emptyCatalog"),
       listaContainer = $("listaContainer"), odometer = $("odometer"),
       btnVaciar = $("btnVaciar"), buscarInput = $("buscarInput"),
-      consultaContainer = $("consultaContainer"), btnClearBusqueda = $("btnClearBusqueda");
+      consultaContainer = $("consultaContainer"), btnClearBusqueda = $("btnClearBusqueda"),
+      chipCaja = $("chipCaja"), chipPaquete = $("chipPaquete"),
+      labelUnidades = $("labelUnidades"), labelCantidad = $("labelCantidad");
+
+  var tipoEmpaqueSeleccionado = "caja";
+  var ETIQUETAS = {
+    caja: {unidades:"Unid. x caja", cantidad:"Cant. cajas", singular:"caja", plural:"cajas"},
+    paquete: {unidades:"Unid. x paquete", cantidad:"Cant. paquetes", singular:"paquete", plural:"paquetes"}
+  };
+
+  function seleccionarTipoEmpaque(tipo){
+    tipoEmpaqueSeleccionado = tipo;
+    chipCaja.classList.toggle("active", tipo === "caja");
+    chipPaquete.classList.toggle("active", tipo === "paquete");
+    labelUnidades.textContent = ETIQUETAS[tipo].unidades;
+    labelCantidad.textContent = ETIQUETAS[tipo].cantidad;
+  }
+  chipCaja.addEventListener("click", function(){ seleccionarTipoEmpaque("caja"); });
+  chipPaquete.addEventListener("click", function(){ seleccionarTipoEmpaque("paquete"); });
 
   // ---------- tabs ----------
   document.querySelectorAll(".tab-btn").forEach(function(btn){
@@ -492,6 +534,7 @@
       op: opInput.value.trim(),
       descripcion: descInput.value.trim(),
       cliente: clienteInput.value.trim(),
+      tipoEmpaque: tipoEmpaqueSeleccionado,
       unidadesXCaja: u,
       cantidadCajas: c,
       totalUnidades: u*c,
@@ -522,13 +565,14 @@
       listaContainer.appendChild(div);
     } else {
       lista.forEach(function(item){
+        var et = ETIQUETAS[item.tipoEmpaque] || ETIQUETAS.caja;
         var card = document.createElement("div");
         card.className = "item-card";
         card.innerHTML =
           '<div class="min-w">' +
             '<div class="top"><span class="item-op mono">'+escapeHtml(item.op)+'</span><span class="item-client">'+escapeHtml(item.cliente)+'</span></div>' +
             '<div class="item-desc">'+escapeHtml(item.descripcion)+'</div>' +
-            '<div class="item-meta">'+item.cantidadCajas+' caja(s) × '+item.unidadesXCaja+' u = <strong>'+item.totalUnidades+' u</strong></div>' +
+            '<div class="item-meta">'+item.cantidadCajas+' '+(item.cantidadCajas===1?et.singular:et.plural)+' × '+item.unidadesXCaja+' u = <strong>'+item.totalUnidades+' u</strong></div>' +
           '</div>';
         var btnDel = document.createElement("button");
         btnDel.className = "btn-del";
@@ -657,6 +701,34 @@
   });
 
   // ---------- exportar ----------
+  // Antes de exportar, se agrupan las piezas con la misma OP + mismo tipo de
+  // empaque (caja/paquete) + misma cantidad de unidades por empaque, sumando
+  // sus cantidades en una sola fila. Si la cantidad x empaque es distinta,
+  // NO se combinan aunque sea la misma OP. La lista en pantalla no se modifica,
+  // solo el archivo exportado.
+  function agruparParaExportar(items){
+    var mapa = {};
+    var orden = [];
+    items.forEach(function(item){
+      var key = item.op + "||" + item.tipoEmpaque + "||" + item.unidadesXCaja;
+      if(!mapa[key]){
+        mapa[key] = {
+          op: item.op,
+          descripcion: item.descripcion,
+          cliente: item.cliente,
+          tipoEmpaque: item.tipoEmpaque,
+          unidadesXCaja: item.unidadesXCaja,
+          cantidadCajas: 0,
+          totalUnidades: 0
+        };
+        orden.push(key);
+      }
+      mapa[key].cantidadCajas += item.cantidadCajas;
+      mapa[key].totalUnidades += item.totalUnidades;
+    });
+    return orden.map(function(k){ return mapa[k]; });
+  }
+
   // NOTA: dentro de apps generadas con WebIntoApp/wrappers similares, tanto la
   // descarga por Blob+<a download> como por data: URI pueden fallar (el
   // manejador de descargas nativo de esos wrappers suele estar mal implementado).
@@ -666,18 +738,21 @@
   btnExportar.addEventListener("click", function(){
     if(lista.length === 0){ mostrarToast("error","La lista está vacía"); return; }
     try{
-      var filas = lista.map(function(i){
+      var agrupado = agruparParaExportar(lista);
+      var filas = agrupado.map(function(i){
+        var et = ETIQUETAS[i.tipoEmpaque] || ETIQUETAS.caja;
         return {
           "OP": i.op,
           "Descripción": i.descripcion,
           "Cliente": i.cliente,
-          "Unidades x caja": i.unidadesXCaja,
-          "Cantidad de cajas": i.cantidadCajas,
+          "Empaque": et.singular.charAt(0).toUpperCase() + et.singular.slice(1),
+          "Unidades x empaque": i.unidadesXCaja,
+          "Cantidad de empaques": i.cantidadCajas,
           "Total unidades": i.totalUnidades
         };
       });
       var ws = XLSX.utils.json_to_sheet(filas);
-      ws["!cols"] = [{wch:14},{wch:36},{wch:22},{wch:14},{wch:16},{wch:14}];
+      ws["!cols"] = [{wch:14},{wch:36},{wch:22},{wch:10},{wch:16},{wch:18},{wch:14}];
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Inventario");
       var hoy = new Date().toISOString().slice(0,10);

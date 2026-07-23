@@ -148,6 +148,11 @@
   .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:50;padding:11px 16px;border-radius:8px;color:#fff;font-size:.85rem;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,.2);}
   .toast.ok{background:var(--green);}
   .toast.error{background:var(--red);}
+
+  .progress-track{width:100%;height:8px;border-radius:4px;background:#EDEEE8;overflow:hidden;margin:6px 0;}
+  .progress-fill{height:100%;border-radius:4px;transition:width .25s ease;}
+  .badge-completado{font-size:.66rem;font-weight:600;background:var(--green);color:#fff;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;}
+  .registro-row{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;color:var(--muted);padding:5px 0;border-top:1px solid #F0F0EA;}
 </style>
 </head>
 <body>
@@ -169,7 +174,21 @@
       <span>Importar catálogo</span>
     </button>
   </div>
-  <div class="wrap tabs">
+  <div class="wrap tabs" id="mainTabs">
+    <button class="tab-btn active" data-maintab="inventario">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
+      Inventario
+    </button>
+    <button class="tab-btn" data-maintab="maquinas">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M4 9h2M4 15h2M18 9h2M18 15h2M9 4v2M15 4v2M9 18v2M15 18v2"/></svg>
+      Máquinas
+    </button>
+    <button class="tab-btn" data-maintab="produccion">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      Producción
+    </button>
+  </div>
+  <div class="wrap tabs" id="subTabsInventario">
     <button class="tab-btn active" data-tab="agregar">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
       Agregar
@@ -183,10 +202,12 @@
 
 <main class="wrap">
 
+<div id="tabInventario">
+
   <div class="empty-catalog hidden" id="emptyCatalog">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2" style="margin:0 auto 6px;display:block;"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
     <p class="lead">Aún no hay catálogo cargado</p>
-    <p class="sub">Importa un Excel con columnas <strong>OP</strong>, <strong>Descripción</strong> y <strong>Cliente</strong> para autocompletar los datos al agregar piezas.</p>
+    <p class="sub">Importa un Excel con columnas <strong>OP</strong>, <strong>Descripción</strong> y <strong>Cliente</strong> (y opcionalmente <strong>Cantidad total</strong>) para autocompletar los datos al agregar piezas.</p>
     <button id="btnImport2">Importar Excel</button>
   </div>
 
@@ -307,14 +328,159 @@
     <div id="consultaContainer"></div>
   </div>
 
+</div><!-- /tabInventario -->
+
+<div id="tabMaquinas" class="hidden">
+
+  <div class="panel" style="margin-bottom:18px;">
+    <h2>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
+      Nueva máquina
+    </h2>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="nombreMaquinaInput" placeholder="Ej. Troqueladora 1" style="flex:1;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;" />
+      <button id="btnAgregarMaquina" style="background:var(--dark);color:#fff;border:none;padding:0 16px;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;white-space:nowrap;">Agregar</button>
+    </div>
+  </div>
+
+  <div class="list-header">
+    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--dark);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+      Máquinas (<span id="totalMaquinas">0</span>)
+    </h2>
+    <div style="display:flex;gap:12px;align-items:center;">
+      <button class="btn-clear" id="btnRespaldarMaquinas" style="color:var(--dark-3);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Respaldar
+      </button>
+      <button class="btn-clear" id="btnRestaurarMaquinas" style="color:var(--dark-3);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+        Restaurar
+      </button>
+    </div>
+  </div>
+
+  <div class="hidden" id="panelRespaldoMaquinas" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Selecciona todo el texto de abajo y cópialo. Guárdalo en Notas o mándatelo por WhatsApp para no perderlo.</p>
+    <textarea id="textoRespaldoMaquinas" readonly style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button id="btnCopiarRespaldoMaquinas" style="flex:1;background:var(--dark);color:#fff;border:none;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer;">Copiar al portapapeles</button>
+      <button id="btnCerrarRespaldoMaquinas" style="background:none;border:1px solid var(--border-input);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+    </div>
+  </div>
+
+  <div class="hidden" id="panelRestaurarMaquinas" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Pega aquí el texto que copiaste con "Respaldar".</p>
+    <textarea id="textoRestaurarMaquinas" placeholder="Pega aquí el texto de respaldo…" style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button id="btnConfirmarRestaurarMaquinas" style="flex:1;background:var(--dark);color:#fff;border:none;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer;">Restaurar máquinas</button>
+      <button id="btnCerrarRestaurarMaquinas" style="background:none;border:1px solid var(--border-input);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+    </div>
+  </div>
+
+  <p style="font-size:.78rem;color:var(--muted);margin:0 0 12px;">Actívalas aquí para que aparezcan en la pestaña <strong>Producción</strong> y puedas asignarles una OP.</p>
+
+  <div id="emptyMaquinas" class="empty-list hidden">Aún no agregas máquinas.</div>
+  <div id="maquinasContainer"></div>
+
+</div><!-- /tabMaquinas -->
+
+<div id="tabProduccion" class="hidden">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <div style="font-size:.85rem;font-weight:600;color:var(--dark);display:flex;align-items:center;gap:8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      Turno actual
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-clear" id="btnHistorial" style="color:var(--dark-3);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+        Historial
+      </button>
+      <button class="btn-clear" id="btnReiniciarTurno" style="color:var(--red);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><polyline points="3 4 3 10 9 10"/></svg>
+        Reiniciar turno
+      </button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+    <button class="btn-clear" id="btnGuardarPlantilla" style="color:var(--dark-3);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+      Guardar plantilla
+    </button>
+    <button class="btn-clear" id="btnUsarPlantilla" style="color:var(--dark-3);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+      Usar plantilla
+    </button>
+    <button class="btn-clear" id="btnReporteEjecutivo" style="color:#0B7A45;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      Resumen jefatura
+    </button>
+  </div>
+
+  <div class="hidden" id="panelHistorial" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:.82rem;font-weight:600;color:var(--dark);">Turnos anteriores</span>
+      <button id="btnCerrarHistorial" style="background:none;border:1px solid var(--border-input);padding:5px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;">Cerrar</button>
+    </div>
+    <div id="historialLista" style="max-height:320px;overflow-y:auto;"></div>
+  </div>
+
+  <div class="odometer">
+    <span class="odometer-label">Total producido (turno activo)</span>
+    <div class="odometer-digits" id="odometerProd"></div>
+  </div>
+
+  <div style="display:flex;gap:12px;margin-bottom:6px;">
+    <button class="btn-clear" id="btnRespaldarProd" style="color:var(--dark-3);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Respaldar
+    </button>
+    <button class="btn-clear" id="btnRestaurarProd" style="color:var(--dark-3);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+      Restaurar
+    </button>
+  </div>
+
+  <div class="hidden" id="panelRespaldoProd" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Selecciona todo el texto de abajo y cópialo. Guárdalo en Notas o mándatelo por WhatsApp para no perderlo.</p>
+    <textarea id="textoRespaldoProd" readonly style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button id="btnCopiarRespaldoProd" style="flex:1;background:var(--dark);color:#fff;border:none;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer;">Copiar al portapapeles</button>
+      <button id="btnCerrarRespaldoProd" style="background:none;border:1px solid var(--border-input);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+    </div>
+  </div>
+
+  <div class="hidden" id="panelRestaurarProd" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Pega aquí el texto que copiaste con "Respaldar".</p>
+    <textarea id="textoRestaurarProd" placeholder="Pega aquí el texto de respaldo…" style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button id="btnConfirmarRestaurarProd" style="flex:1;background:var(--dark);color:#fff;border:none;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer;">Restaurar turno</button>
+      <button id="btnCerrarRestaurarProd" style="background:none;border:1px solid var(--border-input);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+    </div>
+  </div>
+
+  <div id="emptyProd" class="empty-list hidden">No hay máquinas activas. Actívalas en la pestaña "Máquinas".</div>
+  <div id="produccionContainer"></div>
+
+</div><!-- /tabProduccion -->
+
 </main>
 
 <div class="bottombar">
-  <div class="bottombar-inner">
+  <div class="bottombar-inner" id="bottombarInventario">
     <span id="footerInfo">0 pieza(s) · 0 unidades totales</span>
     <button class="btn-export" id="btnExportar" disabled>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Exportar Excel
+    </button>
+  </div>
+  <div class="bottombar-inner hidden" id="bottombarProduccion">
+    <button id="btnCopiarReporteProd" style="background:none;border:1px solid var(--dark-3);color:#E7EAF0;padding:9px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;">Copiar texto</button>
+    <button class="btn-export" id="btnReportarWhatsappProd" style="background:#25D366;color:#0B2E13;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2z"/></svg>
+      Reportar WhatsApp
     </button>
   </div>
 </div>
@@ -327,9 +493,17 @@
 
   var STORAGE_CATALOGO = "inventario_catalogo_op";
   var STORAGE_LISTA = "inventario_lista_pendiente";
+  var STORAGE_MAQUINAS = "inventario_maquinas";
+  var STORAGE_TURNO = "inventario_turno_maquinas";
+  var STORAGE_HISTORIAL = "inventario_historial_turnos";
+  var STORAGE_PLANTILLA = "inventario_plantilla_turno";
 
   var catalogo = [];
   var lista = [];
+  var maquinas = [];
+  var turno = [];
+  var historial = [];
+  var plantilla = [];
   var opEncontrada = false;
 
   // ---------- utilidades ----------
@@ -346,6 +520,49 @@
       var l = localStorage.getItem(STORAGE_LISTA);
       if(l) lista = JSON.parse(l);
     }catch(e){}
+    try{
+      var m = localStorage.getItem(STORAGE_MAQUINAS);
+      if(m) maquinas = JSON.parse(m);
+    }catch(e){}
+    try{
+      var t = localStorage.getItem(STORAGE_TURNO);
+      if(t) turno = JSON.parse(t);
+    }catch(e){}
+    try{
+      var h = localStorage.getItem(STORAGE_HISTORIAL);
+      if(h) historial = JSON.parse(h);
+    }catch(e){}
+    try{
+      var pl = localStorage.getItem(STORAGE_PLANTILLA);
+      if(pl) plantilla = JSON.parse(pl);
+    }catch(e){}
+
+    // migración: "activa" ahora vive en la máquina (antes vivía en el turno)
+    var migroActiva = false;
+    maquinas.forEach(function(m){
+      if(typeof m.activa === "undefined"){
+        var tExistente = turno.find(function(x){ return x.maquinaId === m.id; });
+        m.activa = tExistente ? !!tExistente.activa : false;
+        migroActiva = true;
+      }
+    });
+    if(migroActiva) guardarMaquinas();
+
+    // migración: "objetivo" ahora es manual (antes se calculaba del catálogo); + operador/motivoParada/merma
+    var migroObjetivo = false;
+    turno.forEach(function(t){
+      if(typeof t.objetivo === "undefined"){
+        var match = catalogo.find(function(c){ return t.op && c.op.toLowerCase() === t.op.trim().toLowerCase(); });
+        t.objetivo = (match && match.cantidadTotal) ? (parseInt(match.cantidadTotal,10) || null) : null;
+        migroObjetivo = true;
+      }
+      if(typeof t.operador === "undefined"){ t.operador = ""; migroObjetivo = true; }
+      if(typeof t.motivoParada === "undefined"){ t.motivoParada = ""; migroObjetivo = true; }
+      t.registros.forEach(function(r){
+        if(typeof r.merma === "undefined"){ r.merma = 0; migroObjetivo = true; }
+      });
+    });
+    if(migroObjetivo) guardarTurno();
     // migración: piezas guardadas antes de que existiera el tipo caja/paquete
     var huboMigracion = false;
     lista.forEach(function(item){
@@ -367,12 +584,56 @@
     catch(e){ mostrarToast("error","No se pudo guardar la lista"); }
   }
 
+  function guardarMaquinas(){
+    try{ localStorage.setItem(STORAGE_MAQUINAS, JSON.stringify(maquinas)); }
+    catch(e){ mostrarToast("error","No se pudo guardar las máquinas"); }
+  }
+
+  function guardarTurno(){
+    try{ localStorage.setItem(STORAGE_TURNO, JSON.stringify(turno)); }
+    catch(e){ mostrarToast("error","No se pudo guardar el turno"); }
+  }
+
+  function guardarHistorial(){
+    try{ localStorage.setItem(STORAGE_HISTORIAL, JSON.stringify(historial)); }
+    catch(e){ mostrarToast("error","No se pudo guardar el historial"); }
+  }
+
+  function guardarPlantilla(){
+    try{ localStorage.setItem(STORAGE_PLANTILLA, JSON.stringify(plantilla)); }
+    catch(e){ mostrarToast("error","No se pudo guardar la plantilla"); }
+  }
+
   function mostrarToast(tipo, texto){
     var el = document.createElement("div");
     el.className = "toast " + tipo;
     el.textContent = texto;
     document.getElementById("toastContainer").appendChild(el);
     setTimeout(function(){ el.remove(); }, 2800);
+  }
+
+  function copiarTexto(texto){
+    var copiado = false;
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(texto);
+        copiado = true;
+      }
+    }catch(e){}
+    if(!copiado){
+      try{
+        var tmp = document.createElement("textarea");
+        tmp.value = texto;
+        tmp.style.position = "fixed";
+        tmp.style.opacity = "0";
+        document.body.appendChild(tmp);
+        tmp.focus();
+        tmp.select();
+        copiado = document.execCommand("copy");
+        document.body.removeChild(tmp);
+      }catch(e){}
+    }
+    return copiado;
   }
 
   // ---------- referencias DOM ----------
@@ -404,10 +665,32 @@
   chipCaja.addEventListener("click", function(){ seleccionarTipoEmpaque("caja"); });
   chipPaquete.addEventListener("click", function(){ seleccionarTipoEmpaque("paquete"); });
 
-  // ---------- tabs ----------
-  document.querySelectorAll(".tab-btn").forEach(function(btn){
+  // ---------- pestañas principales (Inventario / Máquinas / Producción) ----------
+  var subTabsInventario = $("subTabsInventario"), tabInventario = $("tabInventario"),
+      tabMaquinas = $("tabMaquinas"), tabProduccion = $("tabProduccion"),
+      bottombarInventario = $("bottombarInventario"),
+      bottombarProduccion = $("bottombarProduccion");
+
+  document.querySelectorAll("#mainTabs .tab-btn").forEach(function(btn){
     btn.addEventListener("click", function(){
-      document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
+      document.querySelectorAll("#mainTabs .tab-btn").forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      var tab = btn.dataset.maintab;
+      tabInventario.classList.toggle("hidden", tab !== "inventario");
+      tabMaquinas.classList.toggle("hidden", tab !== "maquinas");
+      tabProduccion.classList.toggle("hidden", tab !== "produccion");
+      subTabsInventario.classList.toggle("hidden", tab !== "inventario");
+      bottombarInventario.classList.toggle("hidden", tab !== "inventario");
+      bottombarProduccion.classList.toggle("hidden", tab !== "produccion");
+      if(tab === "maquinas") renderMaquinas();
+      if(tab === "produccion") renderProduccion();
+    });
+  });
+
+  // ---------- subpestañas de inventario ----------
+  document.querySelectorAll("#subTabsInventario .tab-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll("#subTabsInventario .tab-btn").forEach(function(b){ b.classList.remove("active"); });
       btn.classList.add("active");
       var tab = btn.dataset.tab;
       $("viewAgregar").classList.toggle("hidden", tab !== "agregar");
@@ -431,6 +714,7 @@
         var idxOp = headers.findIndex(function(h){ return h.indexOf("op") !== -1; });
         var idxDesc = headers.findIndex(function(h){ return h.indexOf("descripcion") !== -1; });
         var idxCliente = headers.findIndex(function(h){ return h.indexOf("cliente") !== -1; });
+        var idxCantidad = headers.findIndex(function(h){ return h.indexOf("cantidad") !== -1 || h.indexOf("total") !== -1; });
         if(idxOp === -1 || idxDesc === -1 || idxCliente === -1){
           mostrarToast("error","Debe tener columnas OP, Descripción y Cliente");
           return;
@@ -441,7 +725,8 @@
             return {
               op: String(r[idxOp]).trim(),
               descripcion: String(r[idxDesc]).trim(),
-              cliente: String(r[idxCliente]).trim()
+              cliente: String(r[idxCliente]).trim(),
+              cantidadTotal: idxCantidad !== -1 ? String(r[idxCantidad]).trim() : ""
             };
           });
         catalogo = nuevo;
@@ -600,7 +885,6 @@
 
   btnVaciar.addEventListener("click", function(){
     if(lista.length === 0) return;
-    if(!confirm("¿Vaciar toda la lista pendiente de exportar?")) return;
     lista = [];
     guardarLista();
     renderLista();
@@ -680,9 +964,9 @@
              c.descripcion.toLowerCase().indexOf(q) !== -1 ||
              c.cliente.toLowerCase().indexOf(q) !== -1;
     });
-    var html = '<div class="table-wrap"><table><thead><tr><th>OP</th><th>Descripción</th><th>Cliente</th></tr></thead><tbody>';
+    var html = '<div class="table-wrap"><table><thead><tr><th>OP</th><th>Descripción</th><th>Cliente</th><th>Cant. total</th></tr></thead><tbody>';
     resultados.slice(0,200).forEach(function(r){
-      html += '<tr><td class="mono" style="font-weight:600;">'+escapeHtml(r.op)+'</td><td>'+escapeHtml(r.descripcion)+'</td><td style="color:var(--muted);">'+escapeHtml(r.cliente)+'</td></tr>';
+      html += '<tr><td class="mono" style="font-weight:600;">'+escapeHtml(r.op)+'</td><td>'+escapeHtml(r.descripcion)+'</td><td style="color:var(--muted);">'+escapeHtml(r.cliente)+'</td><td class="mono" style="color:var(--muted);">'+(r.cantidadTotal ? escapeHtml(r.cantidadTotal) : "—")+'</td></tr>';
     });
     html += '</tbody></table>';
     if(resultados.length === 0){
@@ -798,6 +1082,693 @@
     mostrarToast("ok","Excel exportado");
   }
 
+  // ---------- máquinas (catálogo simple) ----------
+  var nombreMaquinaInput = $("nombreMaquinaInput"), maquinasContainer = $("maquinasContainer"),
+      emptyMaquinas = $("emptyMaquinas"), totalMaquinasEl = $("totalMaquinas");
+
+  $("btnAgregarMaquina").addEventListener("click", function(){
+    var nombre = nombreMaquinaInput.value.trim();
+    if(!nombre){ mostrarToast("error","Ponle un nombre a la máquina"); return; }
+    maquinas.unshift({
+      id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
+      nombre: nombre,
+      activa: false
+    });
+    guardarMaquinas();
+    nombreMaquinaInput.value = "";
+    renderMaquinas();
+    mostrarToast("ok","Máquina agregada");
+  });
+  nombreMaquinaInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter") $("btnAgregarMaquina").click();
+  });
+
+  function buscarEnCatalogo(op){
+    if(!op) return null;
+    var q = op.trim().toLowerCase();
+    if(!q) return null;
+    return catalogo.find(function(c){ return c.op.toLowerCase() === q; }) || null;
+  }
+
+  function crearTarjetaMaquina(item){
+    var card = document.createElement("div");
+    card.className = "item-card";
+    var nombreEl = document.createElement("span");
+    nombreEl.className = "mono";
+    nombreEl.style.cssText = "font-weight:600;font-size:.95rem;";
+    nombreEl.textContent = item.nombre;
+
+    var derecha = document.createElement("div");
+    derecha.style.cssText = "display:flex;align-items:center;gap:8px;flex-shrink:0;";
+
+    var toggle = document.createElement("button");
+    toggle.type = "button";
+    function pintarToggle(){
+      toggle.textContent = item.activa ? "Activa" : "Inactiva";
+      toggle.style.cssText = "padding:6px 14px;border-radius:20px;border:1px solid " +
+        (item.activa ? "var(--green)" : "var(--border-input)") +
+        ";font-size:.72rem;font-weight:600;cursor:pointer;background:" +
+        (item.activa ? "var(--green)" : "#fff") + ";color:" + (item.activa ? "#fff" : "var(--muted)") + ";";
+    }
+    pintarToggle();
+    toggle.addEventListener("click", function(){
+      item.activa = !item.activa;
+      guardarMaquinas();
+      pintarToggle();
+    });
+
+    var btnDel = document.createElement("button");
+    btnDel.className = "btn-del";
+    btnDel.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"/></svg>';
+    btnDel.addEventListener("click", function(){
+      maquinas = maquinas.filter(function(m){ return m.id !== item.id; });
+      guardarMaquinas();
+      renderMaquinas();
+    });
+
+    derecha.appendChild(toggle);
+    derecha.appendChild(btnDel);
+    card.appendChild(nombreEl);
+    card.appendChild(derecha);
+    return card;
+  }
+
+  function renderMaquinas(){
+    maquinasContainer.innerHTML = "";
+    emptyMaquinas.classList.toggle("hidden", maquinas.length > 0);
+    totalMaquinasEl.textContent = maquinas.length;
+    maquinas.forEach(function(item){
+      maquinasContainer.appendChild(crearTarjetaMaquina(item));
+    });
+  }
+
+  // ---------- respaldar / restaurar máquinas ----------
+  var panelRespaldoMaquinas = $("panelRespaldoMaquinas"), panelRestaurarMaquinas = $("panelRestaurarMaquinas"),
+      textoRespaldoMaquinas = $("textoRespaldoMaquinas"), textoRestaurarMaquinas = $("textoRestaurarMaquinas");
+
+  $("btnRespaldarMaquinas").addEventListener("click", function(){
+    if(maquinas.length === 0){ mostrarToast("error","No hay máquinas que respaldar"); return; }
+    panelRestaurarMaquinas.classList.add("hidden");
+    textoRespaldoMaquinas.value = JSON.stringify(maquinas);
+    panelRespaldoMaquinas.classList.remove("hidden");
+    textoRespaldoMaquinas.focus();
+    textoRespaldoMaquinas.select();
+  });
+  $("btnCerrarRespaldoMaquinas").addEventListener("click", function(){ panelRespaldoMaquinas.classList.add("hidden"); });
+  $("btnCopiarRespaldoMaquinas").addEventListener("click", function(){
+    var ok = copiarTexto(textoRespaldoMaquinas.value);
+    mostrarToast(ok ? "ok" : "error", ok ? "Copiado al portapapeles" : "No se pudo copiar, selecciona el texto manualmente");
+  });
+  $("btnRestaurarMaquinas").addEventListener("click", function(){
+    panelRespaldoMaquinas.classList.add("hidden");
+    textoRestaurarMaquinas.value = "";
+    panelRestaurarMaquinas.classList.remove("hidden");
+    textoRestaurarMaquinas.focus();
+  });
+  $("btnCerrarRestaurarMaquinas").addEventListener("click", function(){ panelRestaurarMaquinas.classList.add("hidden"); });
+  $("btnConfirmarRestaurarMaquinas").addEventListener("click", function(){
+    var texto = textoRestaurarMaquinas.value.trim();
+    if(!texto){ mostrarToast("error","Pega el texto de respaldo primero"); return; }
+    var datos;
+    try{ datos = JSON.parse(texto); }
+    catch(e){ mostrarToast("error","Ese texto no es válido"); return; }
+    if(!Array.isArray(datos)){ mostrarToast("error","El formato no corresponde a una lista de máquinas"); return; }
+    var idsExistentes = {};
+    maquinas.forEach(function(m){ idsExistentes[m.id] = true; });
+    var agregadas = 0;
+    datos.forEach(function(m){
+      if(m && m.id && !idsExistentes[m.id]){
+        maquinas.unshift(m);
+        idsExistentes[m.id] = true;
+        agregadas++;
+      }
+    });
+    guardarMaquinas();
+    renderMaquinas();
+    panelRestaurarMaquinas.classList.add("hidden");
+    mostrarToast("ok", agregadas + " máquina(s) restaurada(s)");
+  });
+
+  // ---------- producción (turno: máquinas activas + OP asignada) ----------
+  var produccionContainer = $("produccionContainer"), emptyProd = $("emptyProd"),
+      odometerProd = $("odometerProd");
+
+  function obtenerTurno(maquinaId){
+    var t = turno.find(function(x){ return x.maquinaId === maquinaId; });
+    if(!t){
+      t = { maquinaId: maquinaId, op: "", objetivo: null, operador: "", motivoParada: "", registros: [] };
+      turno.push(t);
+    }
+    return t;
+  }
+
+  function totalProducido(t){
+    return t.registros.reduce(function(acc,r){ return acc + r.cantidad; }, 0);
+  }
+  function totalMerma(t){
+    return t.registros.reduce(function(acc,r){ return acc + (r.merma||0); }, 0);
+  }
+
+  function crearTarjetaTurno(maquina){
+    var t = obtenerTurno(maquina.id);
+    var card = document.createElement("div");
+    card.className = "item-card";
+    card.style.flexDirection = "column";
+    card.style.alignItems = "stretch";
+
+    var nombreEl = document.createElement("div");
+    nombreEl.className = "mono";
+    nombreEl.style.cssText = "font-weight:600;font-size:.95rem;margin-bottom:8px;";
+    nombreEl.textContent = maquina.nombre;
+    card.appendChild(nombreEl);
+
+    // operador a cargo
+    var operadorInput = document.createElement("input");
+    operadorInput.type = "text";
+    operadorInput.placeholder = "Operador a cargo";
+    operadorInput.value = t.operador || "";
+    operadorInput.style.cssText = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;margin-bottom:8px;";
+    operadorInput.addEventListener("input", function(){
+      t.operador = operadorInput.value.trim();
+      guardarTurno();
+    });
+    card.appendChild(operadorInput);
+
+    // motivo de parada (si no está produciendo normalmente)
+    var motivoSelect = document.createElement("select");
+    motivoSelect.style.cssText = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.8rem;outline:none;margin-bottom:8px;background:#fff;color:var(--text);";
+    ["", "Falta de insumo", "Mantenimiento / Falla mecánica", "Limpieza", "Sin operador", "Ajuste de formato", "Otro"].forEach(function(op){
+      var opt = document.createElement("option");
+      opt.value = op;
+      opt.textContent = op === "" ? "Produciendo normalmente" : "⏸ " + op;
+      if(t.motivoParada === op) opt.selected = true;
+      motivoSelect.appendChild(opt);
+    });
+    motivoSelect.addEventListener("change", function(){
+      t.motivoParada = motivoSelect.value;
+      guardarTurno();
+    });
+    card.appendChild(motivoSelect);
+
+    // campo OP con autocompletar
+    var opWrap = document.createElement("div");
+    opWrap.style.cssText = "position:relative;";
+    var opFieldInput = document.createElement("input");
+    opFieldInput.type = "text";
+    opFieldInput.className = "mono";
+    opFieldInput.placeholder = "OP asignada";
+    opFieldInput.value = t.op || "";
+    opFieldInput.style.cssText = "width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;";
+    var sugBox = document.createElement("div");
+    sugBox.className = "suggest-box hidden";
+    opWrap.appendChild(opFieldInput);
+    opWrap.appendChild(sugBox);
+    card.appendChild(opWrap);
+
+    var referencia = document.createElement("div");
+    referencia.style.cssText = "font-size:.75rem;color:var(--muted-2);min-height:16px;margin:4px 0 8px;";
+    card.appendChild(referencia);
+
+    function actualizarReferencia(){
+      var match = buscarEnCatalogo(opFieldInput.value);
+      if(match){
+        referencia.innerHTML = escapeHtml(match.descripcion) + ' · ' + escapeHtml(match.cliente);
+      } else if(opFieldInput.value.trim()){
+        referencia.textContent = "Sin coincidencia en el catálogo";
+      } else {
+        referencia.textContent = "";
+      }
+    }
+    actualizarReferencia();
+
+    function renderSugerencias(){
+      var q = opFieldInput.value.trim().toLowerCase();
+      if(!q){ sugBox.classList.add("hidden"); sugBox.innerHTML=""; return; }
+      var matches = catalogo.filter(function(c){ return c.op.toLowerCase().indexOf(q) !== -1; }).slice(0,6);
+      if(matches.length === 0){ sugBox.classList.add("hidden"); sugBox.innerHTML=""; return; }
+      sugBox.innerHTML = "";
+      matches.forEach(function(m){
+        var btn = document.createElement("button");
+        btn.className = "suggest-item";
+        btn.innerHTML = '<div class="suggest-op mono">'+escapeHtml(m.op)+'</div><div class="suggest-meta">'+escapeHtml(m.descripcion)+' · '+escapeHtml(m.cliente)+'</div>';
+        btn.addEventListener("mousedown", function(ev){
+          ev.preventDefault();
+          opFieldInput.value = m.op;
+          t.op = m.op;
+          guardarTurno();
+          actualizarReferencia();
+          sugBox.classList.add("hidden");
+        });
+        sugBox.appendChild(btn);
+      });
+      sugBox.classList.remove("hidden");
+    }
+
+    opFieldInput.addEventListener("input", function(){
+      t.op = opFieldInput.value.trim();
+      guardarTurno();
+      actualizarReferencia();
+      renderSugerencias();
+    });
+    opFieldInput.addEventListener("focus", renderSugerencias);
+    opFieldInput.addEventListener("blur", function(){ setTimeout(function(){ sugBox.classList.add("hidden"); }, 150); });
+
+    // meta manual (escrita por el usuario, no viene del catálogo)
+    var metaWrap = document.createElement("div");
+    metaWrap.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;";
+    var metaLabel = document.createElement("span");
+    metaLabel.style.cssText = "font-size:.72rem;color:var(--muted);white-space:nowrap;";
+    metaLabel.textContent = "Meta:";
+    var metaInput = document.createElement("input");
+    metaInput.type = "number";
+    metaInput.min = "0";
+    metaInput.className = "mono";
+    metaInput.placeholder = "Cantidad objetivo (opcional)";
+    metaInput.value = t.objetivo != null ? t.objetivo : "";
+    metaInput.style.cssText = "flex:1;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;";
+    metaWrap.appendChild(metaLabel);
+    metaWrap.appendChild(metaInput);
+    card.appendChild(metaWrap);
+
+    var metaTxt = document.createElement("div");
+    metaTxt.className = "item-meta";
+    card.appendChild(metaTxt);
+
+    var track = document.createElement("div");
+    track.className = "progress-track";
+    var fill = document.createElement("div");
+    fill.className = "progress-fill";
+    track.appendChild(fill);
+    card.appendChild(track);
+
+    function actualizarProgreso(){
+      var producido = totalProducido(t);
+      var objetivo = t.objetivo;
+      if(objetivo){
+        var pct = Math.min(100, Math.round((producido/objetivo)*100));
+        var completado = producido >= objetivo;
+        metaTxt.innerHTML = '<strong style="color:var(--dark);">'+producido+'</strong> / '+objetivo+' u ('+pct+'%)' +
+          (completado ? ' <span class="badge-completado">Completado</span>' : '');
+        track.style.display = "";
+        fill.style.width = pct + "%";
+        fill.style.background = completado ? "var(--green)" : (pct >= 50 ? "var(--amber)" : "var(--red)");
+      } else {
+        metaTxt.innerHTML = '<strong style="color:var(--dark);">'+producido+'</strong> u producidas <span style="color:var(--muted-2);">(sin meta definida)</span>';
+        track.style.display = "none";
+      }
+    }
+    actualizarProgreso();
+
+    metaInput.addEventListener("input", function(){
+      var v = parseInt(metaInput.value,10);
+      t.objetivo = (metaInput.value.trim() && !isNaN(v) && v > 0) ? v : null;
+      guardarTurno();
+      actualizarProgreso();
+    });
+
+    // registrar producción
+    var registrarWrap = document.createElement("div");
+    registrarWrap.style.cssText = "display:flex;gap:8px;margin-top:8px;";
+    var cantInput = document.createElement("input");
+    cantInput.type = "number";
+    cantInput.min = "0";
+    cantInput.className = "mono";
+    cantInput.placeholder = "Cant. producida";
+    cantInput.style.cssText = "flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;";
+    var mermaInput = document.createElement("input");
+    mermaInput.type = "number";
+    mermaInput.min = "0";
+    mermaInput.className = "mono";
+    mermaInput.placeholder = "Merma";
+    mermaInput.style.cssText = "width:80px;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;";
+    var btnAdd = document.createElement("button");
+    btnAdd.textContent = "+";
+    btnAdd.style.cssText = "background:var(--dark);color:#fff;border:none;padding:0 16px;border-radius:6px;font-size:1rem;font-weight:500;cursor:pointer;white-space:nowrap;";
+
+    var mermaResumen = document.createElement("div");
+    mermaResumen.style.cssText = "font-size:.72rem;color:var(--red);margin-top:4px;min-height:14px;";
+
+    function actualizarMermaResumen(){
+      var merma = totalMerma(t);
+      mermaResumen.textContent = merma > 0 ? "Merma acumulada: " + merma + " u" : "";
+    }
+    actualizarMermaResumen();
+
+    var detalleContainer = document.createElement("div");
+
+    function renderRegistros(){
+      detalleContainer.innerHTML = "";
+      if(!t.registros.length) return;
+      t.registros.slice(0,5).forEach(function(r){
+        var fila = document.createElement("div");
+        fila.className = "registro-row";
+        var f = new Date(r.fecha);
+        var fTxt = f.toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit"}) + " " + f.toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"});
+        var span = document.createElement("span");
+        span.textContent = fTxt;
+        var wrapDer = document.createElement("span");
+        wrapDer.style.cssText = "display:flex;align-items:center;";
+        var spanCant = document.createElement("span");
+        spanCant.className = "mono";
+        spanCant.style.color = "var(--dark)";
+        spanCant.textContent = "+" + r.cantidad + " u" + (r.merma ? " (merma " + r.merma + ")" : "");
+        var btnDelReg = document.createElement("button");
+        btnDelReg.style.cssText = "background:none;border:none;color:var(--red);cursor:pointer;padding:0 0 0 8px;";
+        btnDelReg.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+        btnDelReg.addEventListener("click", function(){
+          t.registros = t.registros.filter(function(x){ return x.id !== r.id; });
+          guardarTurno();
+          actualizarProgreso();
+          actualizarMermaResumen();
+          renderRegistros();
+        });
+        wrapDer.appendChild(spanCant);
+        wrapDer.appendChild(btnDelReg);
+        fila.appendChild(span);
+        fila.appendChild(wrapDer);
+        detalleContainer.appendChild(fila);
+      });
+      if(t.registros.length > 5){
+        var mas = document.createElement("div");
+        mas.style.cssText = "font-size:.7rem;color:var(--muted-2);padding-top:4px;";
+        mas.textContent = "+" + (t.registros.length - 5) + " registro(s) más";
+        detalleContainer.appendChild(mas);
+      }
+    }
+    renderRegistros();
+
+    btnAdd.addEventListener("click", function(){
+      var cantidad = parseInt(cantInput.value,10);
+      var merma = parseInt(mermaInput.value,10);
+      if(isNaN(merma) || merma < 0) merma = 0;
+      if(!cantInput.value || isNaN(cantidad) || cantidad <= 0){ mostrarToast("error","Ingresa una cantidad válida"); return; }
+      t.registros.unshift({
+        id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
+        cantidad: cantidad,
+        merma: merma,
+        fecha: new Date().toISOString()
+      });
+      guardarTurno();
+      cantInput.value = "";
+      mermaInput.value = "";
+      actualizarProgreso();
+      actualizarMermaResumen();
+      renderRegistros();
+      mostrarToast("ok","Producción registrada");
+    });
+
+    registrarWrap.appendChild(cantInput);
+    registrarWrap.appendChild(mermaInput);
+    registrarWrap.appendChild(btnAdd);
+    card.appendChild(registrarWrap);
+    card.appendChild(mermaResumen);
+    card.appendChild(detalleContainer);
+
+    return card;
+  }
+
+  function renderProduccion(){
+    produccionContainer.innerHTML = "";
+    var activas = maquinas.filter(function(m){ return m.activa; });
+    emptyProd.classList.toggle("hidden", activas.length > 0);
+    activas.forEach(function(m){
+      produccionContainer.appendChild(crearTarjetaTurno(m));
+    });
+    var totalGeneral = turno.reduce(function(acc,t){ return acc + totalProducido(t); }, 0);
+    var digitos = String(totalGeneral).padStart(6,"0").split("");
+    odometerProd.innerHTML = "";
+    digitos.forEach(function(d){
+      var span = document.createElement("span");
+      span.className = "mono";
+      span.textContent = d;
+      odometerProd.appendChild(span);
+    });
+  }
+
+  $("btnGuardarPlantilla").addEventListener("click", function(){
+    var activas = maquinas.filter(function(m){ return m.activa; });
+    if(activas.length === 0){ mostrarToast("error","No hay máquinas activas para guardar"); return; }
+    plantilla = activas.map(function(m){
+      var t = obtenerTurno(m.id);
+      return { maquinaId: m.id, op: t.op, objetivo: t.objetivo, operador: t.operador };
+    });
+    guardarPlantilla();
+    mostrarToast("ok","Plantilla guardada (" + plantilla.length + " máquina(s))");
+  });
+
+  $("btnUsarPlantilla").addEventListener("click", function(){
+    if(plantilla.length === 0){ mostrarToast("error","No hay ninguna plantilla guardada"); return; }
+    var aplicadas = 0;
+    plantilla.forEach(function(p){
+      var m = maquinas.find(function(x){ return x.id === p.maquinaId; });
+      if(!m) return;
+      m.activa = true;
+      var t = obtenerTurno(m.id);
+      t.op = p.op;
+      t.objetivo = p.objetivo;
+      t.operador = p.operador;
+      aplicadas++;
+    });
+    guardarMaquinas();
+    guardarTurno();
+    renderProduccion();
+    mostrarToast("ok", aplicadas + " máquina(s) configuradas desde la plantilla");
+  });
+
+  $("btnReporteEjecutivo").addEventListener("click", function(){
+    if(maquinas.length === 0){ mostrarToast("error","No hay máquinas registradas"); return; }
+    var texto = generarReporteEjecutivo();
+    var url = "https://wa.me/?text=" + encodeURIComponent(texto);
+    var a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+
+  function generarReporteEjecutivo(){
+    var fecha = new Date().toLocaleString("es-PE", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
+    var activas = maquinas.filter(function(m){ return m.activa; });
+    var inactivas = maquinas.filter(function(m){ return !m.activa; });
+    var totalProd = 0, totalMermaGlobal = 0;
+    var conObjetivo = [];
+    activas.forEach(function(m){
+      var t = obtenerTurno(m.id);
+      totalProd += totalProducido(t);
+      totalMermaGlobal += totalMerma(t);
+      if(t.objetivo) conObjetivo.push({ maquina:m, pct: Math.min(100, Math.round((totalProducido(t)/t.objetivo)*100)) });
+    });
+    var cumplimientoProm = conObjetivo.length ? Math.round(conObjetivo.reduce(function(a,c){ return a+c.pct; },0)/conObjetivo.length) : null;
+    var atrasadas = conObjetivo.filter(function(c){ return c.pct < 70; }).sort(function(a,b){ return a.pct-b.pct; }).slice(0,3);
+
+    var l = [];
+    l.push("*Resumen Ejecutivo de Turno* — " + fecha);
+    l.push("");
+    l.push("📦 Producido: *" + totalProd + " u*" + (totalMermaGlobal ? " (merma: " + totalMermaGlobal + " u)" : ""));
+    l.push("📈 Cumplimiento promedio: *" + (cumplimientoProm !== null ? cumplimientoProm + "%" : "N/D") + "*");
+    l.push("⚙️ Máquinas: " + activas.length + " operativas / " + inactivas.length + " paradas");
+    if(atrasadas.length){
+      l.push("");
+      l.push("⚠️ *Atención:*");
+      atrasadas.forEach(function(c){
+        l.push("• " + c.maquina.nombre + ": " + c.pct + "% de avance");
+      });
+    }
+    return l.join("\n");
+  }
+
+  $("btnReiniciarTurno").addEventListener("click", function(){
+    if(turno.length === 0) return;
+    historial.unshift({
+      id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
+      fecha: new Date().toISOString(),
+      resumen: generarReporteProduccion()
+    });
+    historial = historial.slice(0,30);
+    guardarHistorial();
+    turno = [];
+    guardarTurno();
+    renderProduccion();
+    mostrarToast("ok","Turno reiniciado y guardado en Historial");
+  });
+
+  // ---------- historial de turnos ----------
+  var panelHistorial = $("panelHistorial"), historialLista = $("historialLista");
+
+  function renderHistorial(){
+    historialLista.innerHTML = "";
+    if(historial.length === 0){
+      historialLista.innerHTML = '<p style="font-size:.78rem;color:var(--muted-2);text-align:center;padding:14px 0;">Aún no hay turnos guardados.</p>';
+      return;
+    }
+    historial.forEach(function(h){
+      var f = new Date(h.fecha);
+      var fTxt = f.toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"}) + " " + f.toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"});
+      var item = document.createElement("div");
+      item.style.cssText = "border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;";
+      var header = document.createElement("div");
+      header.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;";
+      var fecha = document.createElement("span");
+      fecha.className = "mono";
+      fecha.style.cssText = "font-size:.78rem;font-weight:600;color:var(--dark);";
+      fecha.textContent = fTxt;
+      var acciones = document.createElement("div");
+      acciones.style.cssText = "display:flex;gap:6px;";
+      var btnCopiar = document.createElement("button");
+      btnCopiar.textContent = "Copiar";
+      btnCopiar.style.cssText = "background:var(--dark);color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:.7rem;cursor:pointer;";
+      btnCopiar.addEventListener("click", function(){
+        var ok = copiarTexto(h.resumen);
+        mostrarToast(ok ? "ok" : "error", ok ? "Copiado" : "No se pudo copiar");
+      });
+      var btnBorrar = document.createElement("button");
+      btnBorrar.style.cssText = "background:none;border:none;color:var(--red);cursor:pointer;padding:4px;";
+      btnBorrar.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"/></svg>';
+      btnBorrar.addEventListener("click", function(){
+        historial = historial.filter(function(x){ return x.id !== h.id; });
+        guardarHistorial();
+        renderHistorial();
+      });
+      acciones.appendChild(btnCopiar);
+      acciones.appendChild(btnBorrar);
+      header.appendChild(fecha);
+      header.appendChild(acciones);
+      var texto = document.createElement("pre");
+      texto.style.cssText = "white-space:pre-wrap;font-family:'IBM Plex Sans',sans-serif;font-size:.75rem;color:var(--muted);margin:0;max-height:120px;overflow-y:auto;";
+      texto.textContent = h.resumen;
+      item.appendChild(header);
+      item.appendChild(texto);
+      historialLista.appendChild(item);
+    });
+  }
+
+  $("btnHistorial").addEventListener("click", function(){
+    renderHistorial();
+    panelHistorial.classList.toggle("hidden");
+  });
+  $("btnCerrarHistorial").addEventListener("click", function(){ panelHistorial.classList.add("hidden"); });
+
+  // ---------- respaldar / restaurar turno ----------
+  var panelRespaldoProd = $("panelRespaldoProd"), panelRestaurarProd = $("panelRestaurarProd"),
+      textoRespaldoProd = $("textoRespaldoProd"), textoRestaurarProd = $("textoRestaurarProd");
+
+  $("btnRespaldarProd").addEventListener("click", function(){
+    if(turno.length === 0){ mostrarToast("error","No hay datos de turno que respaldar"); return; }
+    panelRestaurarProd.classList.add("hidden");
+    textoRespaldoProd.value = JSON.stringify(turno);
+    panelRespaldoProd.classList.remove("hidden");
+    textoRespaldoProd.focus();
+    textoRespaldoProd.select();
+  });
+  $("btnCerrarRespaldoProd").addEventListener("click", function(){ panelRespaldoProd.classList.add("hidden"); });
+  $("btnCopiarRespaldoProd").addEventListener("click", function(){
+    var ok = copiarTexto(textoRespaldoProd.value);
+    mostrarToast(ok ? "ok" : "error", ok ? "Copiado al portapapeles" : "No se pudo copiar, selecciona el texto manualmente");
+  });
+  $("btnRestaurarProd").addEventListener("click", function(){
+    panelRespaldoProd.classList.add("hidden");
+    textoRestaurarProd.value = "";
+    panelRestaurarProd.classList.remove("hidden");
+    textoRestaurarProd.focus();
+  });
+  $("btnCerrarRestaurarProd").addEventListener("click", function(){ panelRestaurarProd.classList.add("hidden"); });
+  $("btnConfirmarRestaurarProd").addEventListener("click", function(){
+    var texto = textoRestaurarProd.value.trim();
+    if(!texto){ mostrarToast("error","Pega el texto de respaldo primero"); return; }
+    var datos;
+    try{ datos = JSON.parse(texto); }
+    catch(e){ mostrarToast("error","Ese texto no es válido"); return; }
+    if(!Array.isArray(datos)){ mostrarToast("error","El formato no corresponde a datos de turno"); return; }
+    turno = datos;
+    guardarTurno();
+    renderProduccion();
+    panelRestaurarProd.classList.add("hidden");
+    mostrarToast("ok","Turno restaurado");
+  });
+
+  // ---------- reporte de producción/turno a WhatsApp ----------
+  function generarReporteProduccion(){
+    var fecha = new Date().toLocaleString("es-PE", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
+    var activas = [], inactivas = [];
+    maquinas.forEach(function(m){
+      var t = obtenerTurno(m.id);
+      if(m.activa) activas.push({maquina:m, turno:t});
+      else inactivas.push(m);
+    });
+    activas.sort(function(a,b){
+      var pa = a.turno.objetivo ? totalProducido(a.turno)/a.turno.objetivo : -1;
+      var pb = b.turno.objetivo ? totalProducido(b.turno)/b.turno.objetivo : -1;
+      return pa - pb;
+    });
+
+    // KPIs generales
+    var totalProd = 0, totalMermaGlobal = 0, sumaPct = 0, cuentaPct = 0;
+    activas.forEach(function(a){
+      totalProd += totalProducido(a.turno);
+      totalMermaGlobal += totalMerma(a.turno);
+      if(a.turno.objetivo){
+        sumaPct += Math.min(100, (totalProducido(a.turno)/a.turno.objetivo)*100);
+        cuentaPct++;
+      }
+    });
+    var cumplimientoProm = cuentaPct > 0 ? Math.round(sumaPct/cuentaPct) : null;
+
+    var l = [];
+    l.push("*Reporte de Turno* — " + fecha);
+    l.push("");
+    l.push("📊 *Resumen*");
+    l.push("Producido: " + totalProd + " u" + (totalMermaGlobal ? " · Merma: " + totalMermaGlobal + " u" : ""));
+    l.push("Cumplimiento promedio: " + (cumplimientoProm !== null ? cumplimientoProm + "%" : "N/D"));
+    l.push("Máquinas: " + activas.length + " activas · " + inactivas.length + " inactivas");
+    l.push("");
+    l.push("✅ *Máquinas activas (" + activas.length + ")*");
+    if(activas.length === 0) l.push("Ninguna");
+    activas.forEach(function(a){
+      var t = a.turno;
+      var match = buscarEnCatalogo(t.op);
+      var producido = totalProducido(t);
+      var merma = totalMerma(t);
+      var opTxt = t.op ? t.op : "sin OP asignada";
+      var descTxt = match && match.descripcion ? " — " + match.descripcion : "";
+      var operadorTxt = t.operador ? " · Operador: " + t.operador : "";
+      var linea = "• " + a.maquina.nombre + ": " + opTxt + descTxt + operadorTxt;
+      if(t.op && t.objetivo){
+        var pct = Math.min(100, Math.round((producido/t.objetivo)*100));
+        linea += " (" + producido + "/" + t.objetivo + " u, " + pct + "%)" + (producido >= t.objetivo ? " ✅" : "");
+      } else if(t.op){
+        linea += " (" + producido + " u producidas)";
+      }
+      if(merma) linea += " · merma: " + merma + " u";
+      if(t.motivoParada) linea += "\n   ⏸ " + t.motivoParada;
+      l.push(linea);
+    });
+    l.push("");
+    l.push("⛔ *Inactivas (" + inactivas.length + ")*");
+    l.push(inactivas.length ? inactivas.map(function(m){ return "• " + m.nombre; }).join("\n") : "Ninguna");
+    return l.join("\n");
+  }
+
+  $("btnCopiarReporteProd").addEventListener("click", function(){
+    if(maquinas.length === 0){ mostrarToast("error","No hay máquinas registradas"); return; }
+    var ok = copiarTexto(generarReporteProduccion());
+    mostrarToast(ok ? "ok" : "error", ok ? "Reporte copiado" : "No se pudo copiar automático");
+  });
+
+  $("btnReportarWhatsappProd").addEventListener("click", function(){
+    if(maquinas.length === 0){ mostrarToast("error","No hay máquinas registradas"); return; }
+    var texto = generarReporteProduccion();
+    var url = "https://wa.me/?text=" + encodeURIComponent(texto);
+    var a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+
   // ---------- contadores ----------
   function actualizarContadores(){
     counts.textContent = catalogo.length + " OP en catálogo · " + lista.length + " en lista";
@@ -813,6 +1784,8 @@
   renderLista();
   actualizarContadores();
   renderConsulta();
+  renderMaquinas();
+  renderProduccion();
 
   if("serviceWorker" in navigator){
     window.addEventListener("load", function(){

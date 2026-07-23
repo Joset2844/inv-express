@@ -1,7 +1,7 @@
 {
-  "name": "Control de Inventario",
-  "short_name": "Inventario",
-  "description": "Registro rápido de inventario de planta: unidades por caja, cajas, OP, descripción y cliente.",
+  "name": "Supervisión de Planta",
+  "short_name": "Planta",
+  "description": "Inventario, control de máquinas, producción por turno y operadores en planta.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

@@ -1,4 +1,4 @@
-const CACHE_NAME = "inventario-planta-v1";
+const CACHE_NAME = "inventario-planta-v2";
 const APP_SHELL = [
   "./index.html",
   "./manifest.json",
@@ -25,19 +25,42 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Solo controla peticiones del mismo origen (el propio app shell).
-// Todo lo externo (CDN de fuentes/xlsx) pasa directo a la red sin interferir.
-self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
+// Permite que la página fuerce activar la versión nueva sin esperar a que
+// se cierren todas las pestañas/instancias abiertas.
+self.addEventListener("message", (event) => {
+  if (event.data === "SKIP_WAITING") self.skipWaiting();
+});
 
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return; // CDN externos pasan directo
+
+  const esNavegacion = req.mode === "navigate" || req.destination === "document";
+
+  if (esNavegacion) {
+    // RED PRIMERO: siempre intenta traer el index.html más reciente del repo.
+    // Si no hay internet, cae a la copia guardada en caché.
+    event.respondWith(
+      fetch(req)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          return response;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Resto de archivos (íconos, manifest): caché primero, red de respaldo.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
+    caches.match(req).then((cached) => {
+      const network = fetch(req)
         .then((response) => {
           if (response && response.status === 200) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
           }
           return response;
         })

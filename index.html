@@ -56,7 +56,8 @@
   .btn-import{display:flex;align-items:center;gap:8px;background:var(--dark-2);color:#E7EAF0;border:none;padding:9px 13px;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;}
   .btn-import:active{background:var(--dark-3);}
 
-  .tabs{display:flex;gap:2px;}
+  .tabs{display:flex;gap:2px;flex-wrap:wrap;}
+  .tab-btn{flex:1 1 auto;justify-content:center;}
   .tab-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--muted-2);padding:10px 16px;font-size:.82rem;font-weight:500;border-bottom:2px solid transparent;cursor:pointer;font-family:'Oswald',sans-serif;letter-spacing:.03em;text-transform:uppercase;}
   .tab-btn.active{color:var(--amber);border-color:var(--amber);}
 
@@ -416,10 +417,6 @@
     <button class="btn-clear" id="btnUsarPlantilla" style="color:var(--dark-3);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
       Usar plantilla
-    </button>
-    <button class="btn-clear" id="btnReporteEjecutivo" style="color:#0B7A45;">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-      Resumen jefatura
     </button>
     <button class="btn-clear" id="btnExportarTurnoExcel" style="color:var(--dark-3);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1420,21 +1417,17 @@
     });
     card.appendChild(operadorSelect);
 
-    // motivo de parada (si no está produciendo normalmente)
-    var motivoSelect = document.createElement("select");
-    motivoSelect.style.cssText = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.8rem;outline:none;margin-bottom:8px;background:#fff;color:var(--text);";
-    ["", "Falta de insumo", "Mantenimiento / Falla mecánica", "Limpieza", "Sin operador", "Ajuste de formato", "Otro"].forEach(function(op){
-      var opt = document.createElement("option");
-      opt.value = op;
-      opt.textContent = op === "" ? "Produciendo normalmente" : "⏸ " + op;
-      if(t.motivoParada === op) opt.selected = true;
-      motivoSelect.appendChild(opt);
-    });
-    motivoSelect.addEventListener("change", function(){
-      t.motivoParada = motivoSelect.value;
+    // motivo de parada (texto libre, opcional)
+    var motivoInput = document.createElement("input");
+    motivoInput.type = "text";
+    motivoInput.placeholder = "Motivo si está detenida (opcional)";
+    motivoInput.value = t.motivoParada || "";
+    motivoInput.style.cssText = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;margin-bottom:8px;";
+    motivoInput.addEventListener("input", function(){
+      t.motivoParada = motivoInput.value.trim();
       guardarTurno();
     });
-    card.appendChild(motivoSelect);
+    card.appendChild(motivoInput);
 
     // campo OP con autocompletar
     var opWrap = document.createElement("div");
@@ -1701,50 +1694,6 @@
     mostrarToast("ok", aplicadas + " máquina(s) configuradas desde la plantilla");
   });
 
-  $("btnReporteEjecutivo").addEventListener("click", function(){
-    if(maquinas.length === 0){ mostrarToast("error","No hay máquinas registradas"); return; }
-    var texto = generarReporteEjecutivo();
-    var url = "https://wa.me/?text=" + encodeURIComponent(texto);
-    var a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  });
-
-  function generarReporteEjecutivo(){
-    var fecha = new Date().toLocaleString("es-PE", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
-    var activas = ordenarPorNombre(maquinas.filter(function(m){ return m.activa; }));
-    var inactivas = maquinas.filter(function(m){ return !m.activa; });
-    var totalProd = 0, totalMermaGlobal = 0;
-    var conObjetivo = [];
-    activas.forEach(function(m){
-      var t = obtenerTurno(m.id);
-      totalProd += totalProducido(t);
-      totalMermaGlobal += totalMerma(t);
-      if(t.objetivo) conObjetivo.push({ maquina:m, pct: Math.min(100, Math.round((totalProducido(t)/t.objetivo)*100)) });
-    });
-    var cumplimientoProm = conObjetivo.length ? Math.round(conObjetivo.reduce(function(a,c){ return a+c.pct; },0)/conObjetivo.length) : null;
-    var atrasadas = conObjetivo.filter(function(c){ return c.pct < 70; }).sort(function(a,b){ return a.pct-b.pct; }).slice(0,3);
-
-    var l = [];
-    l.push("*Resumen Ejecutivo de Turno* — " + fecha);
-    l.push("");
-    l.push("📦 Producido: *" + totalProd + " u*" + (totalMermaGlobal ? " (merma: " + totalMermaGlobal + " u)" : ""));
-    l.push("📈 Cumplimiento promedio: *" + (cumplimientoProm !== null ? cumplimientoProm + "%" : "N/D") + "*");
-    l.push("⚙️ Máquinas: " + activas.length + " operativas / " + inactivas.length + " paradas");
-    if(atrasadas.length){
-      l.push("");
-      l.push("⚠️ *Atención:*");
-      atrasadas.forEach(function(c){
-        l.push("• " + c.maquina.nombre + ": " + c.pct + "% de avance");
-      });
-    }
-    return l.join("\n");
-  }
-
   $("btnReiniciarTurno").addEventListener("click", function(){
     if(turno.length === 0) return;
     historial.unshift({
@@ -1867,62 +1816,26 @@
   // ---------- reporte de producción/turno a WhatsApp ----------
   function generarReporteProduccion(){
     var fecha = new Date().toLocaleString("es-PE", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
-    var activas = [], inactivas = [];
-    ordenarPorNombre(maquinas).forEach(function(m){
-      var t = obtenerTurno(m.id);
-      if(m.activa) activas.push({maquina:m, turno:t});
-      else inactivas.push(m);
-    });
-    activas.sort(function(a,b){
-      var pa = a.turno.objetivo ? totalProducido(a.turno)/a.turno.objetivo : -1;
-      var pb = b.turno.objetivo ? totalProducido(b.turno)/b.turno.objetivo : -1;
-      return pa - pb;
-    });
-
-    // KPIs generales
-    var totalProd = 0, totalMermaGlobal = 0, sumaPct = 0, cuentaPct = 0;
-    activas.forEach(function(a){
-      totalProd += totalProducido(a.turno);
-      totalMermaGlobal += totalMerma(a.turno);
-      if(a.turno.objetivo){
-        sumaPct += Math.min(100, (totalProducido(a.turno)/a.turno.objetivo)*100);
-        cuentaPct++;
-      }
-    });
-    var cumplimientoProm = cuentaPct > 0 ? Math.round(sumaPct/cuentaPct) : null;
+    var activas = ordenarPorNombre(maquinas.filter(function(m){ return m.activa; }));
 
     var l = [];
     l.push("*Reporte de Turno* — " + fecha);
     l.push("");
-    l.push("📊 *Resumen*");
-    l.push("Producido: " + totalProd + " u" + (totalMermaGlobal ? " · Merma: " + totalMermaGlobal + " u" : ""));
-    l.push("Cumplimiento promedio: " + (cumplimientoProm !== null ? cumplimientoProm + "%" : "N/D"));
-    l.push("Máquinas: " + activas.length + " activas · " + inactivas.length + " inactivas");
-    l.push("");
-    l.push("✅ *Máquinas activas (" + activas.length + ")*");
-    if(activas.length === 0) l.push("Ninguna");
-    activas.forEach(function(a){
-      var t = a.turno;
+    if(activas.length === 0){
+      l.push("No hay máquinas activas.");
+      return l.join("\n");
+    }
+    activas.forEach(function(m){
+      var t = obtenerTurno(m.id);
+      if(t.motivoParada){
+        l.push("• " + m.nombre + ": ⏸ " + t.motivoParada);
+        return;
+      }
       var match = buscarEnCatalogo(t.op);
-      var producido = totalProducido(t);
-      var merma = totalMerma(t);
       var opTxt = t.op ? t.op : "sin OP asignada";
       var descTxt = match && match.descripcion ? " — " + match.descripcion : "";
-      var operadorTxt = t.operador ? " · Operador: " + t.operador : "";
-      var linea = "• " + a.maquina.nombre + ": " + opTxt + descTxt + operadorTxt;
-      if(t.op && t.objetivo){
-        var pct = Math.min(100, Math.round((producido/t.objetivo)*100));
-        linea += " (" + producido + "/" + t.objetivo + " u, " + pct + "%)" + (producido >= t.objetivo ? " ✅" : "");
-      } else if(t.op){
-        linea += " (" + producido + " u producidas)";
-      }
-      if(merma) linea += " · merma: " + merma + " u";
-      if(t.motivoParada) linea += "\n   ⏸ " + t.motivoParada;
-      l.push(linea);
+      l.push("• " + m.nombre + ": " + opTxt + descTxt);
     });
-    l.push("");
-    l.push("⛔ *Inactivas (" + inactivas.length + ")*");
-    l.push(inactivas.length ? inactivas.map(function(m){ return "• " + m.nombre; }).join("\n") : "Ninguna");
     return l.join("\n");
   }
 

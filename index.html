@@ -130,12 +130,12 @@
   .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted-2);}
   .clear-icon{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--muted-2);background:none;border:none;cursor:pointer;padding:0;}
 
-  table{width:100%;border-collapse:collapse;font-size:.85rem;}
+  table{width:100%;min-width:640px;border-collapse:collapse;font-size:.85rem;}
   thead tr{background:var(--dark);}
   thead th{text-align:left;padding:9px 11px;font-size:.68rem;font-weight:500;color:#E7EAF0;text-transform:uppercase;letter-spacing:.04em;}
   tbody td{padding:9px 11px;}
   tbody tr:nth-child(even){background:var(--panel-alt);}
-  .table-wrap{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .table-wrap{border:1px solid var(--border);border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .table-empty{text-align:center;padding:26px;color:var(--muted-2);font-size:.85rem;}
 
   .hidden{display:none !important;}
@@ -1066,10 +1066,12 @@
       var agrupado = agruparParaExportar(lista);
       var filas = agrupado.map(function(i){
         var et = ETIQUETAS[i.tipoEmpaque] || ETIQUETAS.caja;
+        var match = buscarEnCatalogo(i.op);
         return {
           "OP": i.op,
           "Descripción": i.descripcion,
           "Cliente": i.cliente,
+          "SAP": match && match.sap ? match.sap : "",
           "Empaque": et.singular.charAt(0).toUpperCase() + et.singular.slice(1),
           "Unidades x empaque": i.unidadesXCaja,
           "Cantidad de empaques": i.cantidadCajas,
@@ -1077,7 +1079,7 @@
         };
       });
       var ws = XLSX.utils.json_to_sheet(filas);
-      ws["!cols"] = [{wch:14},{wch:36},{wch:22},{wch:10},{wch:16},{wch:18},{wch:14}];
+      ws["!cols"] = [{wch:14},{wch:36},{wch:22},{wch:12},{wch:10},{wch:16},{wch:18},{wch:14}];
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Inventario");
       var hoy = new Date().toISOString().slice(0,10);

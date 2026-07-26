@@ -241,6 +241,11 @@
         <input type="text" id="clienteInput" placeholder="Se autocompleta con la OP" />
       </div>
 
+      <div class="field">
+        <label>Observación (opcional)</label>
+        <input type="text" id="observacionInput" placeholder="Ej. caja abollada, revisar calidad..." />
+      </div>
+
       <div class="chip-group">
         <button type="button" class="chip active" id="chipCaja" data-tipo="caja">
           <span class="chip-dot"></span> Caja
@@ -676,6 +681,7 @@
   // ---------- referencias DOM ----------
   var $ = function(id){ return document.getElementById(id); };
   var opInput = $("opInput"), descInput = $("descInput"), clienteInput = $("clienteInput"),
+      observacionInput = $("observacionInput"),
       unidadesInput = $("unidadesInput"), cajasInput = $("cajasInput"),
       totalForm = $("totalForm"), suggestBox = $("suggestBox"), fieldOp = $("fieldOp"),
       checkIcon = $("checkIcon"), counts = $("counts"), footerInfo = $("footerInfo"),
@@ -844,6 +850,7 @@
 
   function limpiarFormulario(){
     opInput.value = ""; descInput.value = ""; clienteInput.value = "";
+    observacionInput.value = "";
     unidadesInput.value = ""; cajasInput.value = "";
     setOpEncontrada(false);
     actualizarTotalForm();
@@ -860,6 +867,7 @@
       op: opInput.value.trim(),
       descripcion: descInput.value.trim(),
       cliente: clienteInput.value.trim(),
+      observacion: observacionInput.value.trim(),
       tipoEmpaque: tipoEmpaqueSeleccionado,
       unidadesXCaja: u,
       cantidadCajas: c,
@@ -899,6 +907,7 @@
             '<div class="top"><span class="item-op mono">'+escapeHtml(item.op)+'</span><span class="item-client">'+escapeHtml(item.cliente)+'</span></div>' +
             '<div class="item-desc">'+escapeHtml(item.descripcion)+'</div>' +
             '<div class="item-meta">'+item.cantidadCajas+' '+(item.cantidadCajas===1?et.singular:et.plural)+' × '+item.unidadesXCaja+' u = <strong>'+item.totalUnidades+' u</strong></div>' +
+            (item.observacion ? '<div class="item-meta" style="color:var(--muted);font-style:italic;">📝 '+escapeHtml(item.observacion)+'</div>' : '') +
           '</div>';
         var btnDel = document.createElement("button");
         btnDel.className = "btn-del";
@@ -1044,14 +1053,22 @@
           tipoEmpaque: item.tipoEmpaque,
           unidadesXCaja: item.unidadesXCaja,
           cantidadCajas: 0,
-          totalUnidades: 0
+          totalUnidades: 0,
+          observaciones: []
         };
         orden.push(key);
       }
       mapa[key].cantidadCajas += item.cantidadCajas;
       mapa[key].totalUnidades += item.totalUnidades;
+      if(item.observacion && mapa[key].observaciones.indexOf(item.observacion) === -1){
+        mapa[key].observaciones.push(item.observacion);
+      }
     });
-    return orden.map(function(k){ return mapa[k]; });
+    return orden.map(function(k){
+      var g = mapa[k];
+      g.observacion = g.observaciones.join(" / ");
+      return g;
+    });
   }
 
   // NOTA: dentro de apps generadas con WebIntoApp/wrappers similares, tanto la
@@ -1075,11 +1092,12 @@
           "Empaque": et.singular.charAt(0).toUpperCase() + et.singular.slice(1),
           "Unidades x empaque": i.unidadesXCaja,
           "Cantidad de empaques": i.cantidadCajas,
-          "Total unidades": i.totalUnidades
+          "Total unidades": i.totalUnidades,
+          "Observación": i.observacion || ""
         };
       });
       var ws = XLSX.utils.json_to_sheet(filas);
-      ws["!cols"] = [{wch:14},{wch:36},{wch:22},{wch:12},{wch:10},{wch:16},{wch:18},{wch:14}];
+      ws["!cols"] = [{wch:14},{wch:36},{wch:22},{wch:12},{wch:10},{wch:16},{wch:18},{wch:14},{wch:30}];
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Inventario");
       var hoy = new Date().toISOString().slice(0,10);

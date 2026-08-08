@@ -315,567 +315,7 @@
         <textarea id="textoRespaldo" readonly style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button id="btnCopiarRespaldo" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Copiar al portapapeles</button>
-          <button id="btnCerrarRespaldo" style="background:none;border:1px solid var(--border-input);col  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:'IBM Plex Sans', sans-serif;
-    -webkit-tap-highlight-color: transparent;
-    padding-bottom:78px;
-  }
-  .mono{font-family:'IBM Plex Mono', monospace;}
-  .label-font{font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:.03em;}
-  .wrap{max-width:900px;margin:0 auto;padding:0 16px;}
-
-  header{position:sticky;top:0;z-index:30;background:var(--panel);border-bottom:3px solid var(--amber);}
-  .header-top{display:flex;align-items:center;justify-content:space-between;padding:6px 0;}
-  .brand{display:flex;align-items:center;gap:8px;}
-  .brand-icon{width:20px;height:20px;border-radius:5px;background:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .brand-icon svg{width:13px;height:13px;}
-  .brand h1{color:#fff;margin:0;font-size:.85rem;font-weight:600;line-height:1;}
-  .brand p{display:none;}
-  .btn-import{display:flex;align-items:center;gap:6px;background:var(--dark-3);color:#E7EAF0;border:none;padding:6px 10px;border-radius:6px;font-size:.73rem;font-weight:500;cursor:pointer;}
-  .btn-import:active{background:var(--border-input);}
-
-  .tabs{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:6px;}
-  .tab-btn{flex:1 1 auto;justify-content:center;}
-  .tab-btn{display:flex;align-items:center;gap:5px;background:var(--dark-3);border:none;color:var(--muted-2);padding:6px 10px;border-radius:16px;font-size:.68rem;font-weight:500;cursor:pointer;font-family:'Oswald',sans-serif;letter-spacing:.02em;text-transform:uppercase;}
-  .tab-btn svg{width:12px;height:12px;}
-  .tab-btn.active{color:#1F2532;background:var(--amber);}
-
-  main{padding:16px 0 20px;}
-
-  .empty-catalog{border:2px dashed var(--border-input);background:var(--panel-alt);border-radius:10px;padding:28px 16px;text-align:center;margin-bottom:20px;}
-  .empty-catalog p{margin:4px 0;}
-  .empty-catalog .lead{font-size:.9rem;font-weight:600;}
-  .empty-catalog .sub{font-size:.78rem;color:var(--muted);max-width:420px;margin:0 auto 12px;}
-  .empty-catalog button{margin-top:6px;display:inline-flex;gap:8px;align-items:center;background:var(--amber);color:#12161F;border:none;padding:10px 18px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;}
-
-  .grid{display:grid;grid-template-columns:1fr;gap:22px;}
-  @media(min-width:800px){.grid{grid-template-columns:2fr 3fr;}}
-
-  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px;}
-  .panel h2{margin:0 0 14px;font-size:.85rem;display:flex;align-items:center;gap:8px;color:var(--text);}
-
-  .field{margin-bottom:12px;position:relative;}
-  .field label{display:block;font-size:.72rem;font-weight:500;color:var(--muted-2);margin-bottom:4px;}
-  .field input, .field select, textarea{width:100%;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;background:var(--panel-alt);color:var(--text);}
-  .field input:focus, .field select:focus, textarea:focus{box-shadow:0 0 0 2px rgba(242,169,59,.3);border-color:var(--amber);}
-  .field.ok input{border-color:var(--green);}
-  .check-icon{position:absolute;right:10px;top:31px;color:var(--green);}
-
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-
-  .chip-group{display:flex;gap:8px;margin-bottom:12px;}
-  .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 8px;border-radius:6px;border:1px solid var(--border-input);background:var(--panel-alt);font-size:.82rem;font-weight:500;cursor:pointer;color:var(--muted-2);}
-  .chip.active{background:var(--amber);border-color:var(--amber);color:#12161F;font-weight:600;}
-  .chip.active .chip-dot{background:#12161F;}
-  .chip-dot{width:8px;height:8px;border-radius:50%;background:var(--border-input);flex-shrink:0;}
-
-  .suggest-box{position:absolute;z-index:20;width:100%;margin-top:2px;background:var(--panel);border:1px solid var(--border-input);border-radius:6px;max-height:220px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.5);}
-  .suggest-item{width:100%;text-align:left;padding:9px 11px;border:none;background:none;border-bottom:1px solid var(--border);cursor:pointer;display:block;font-size:.78rem;color:var(--text);}
-  .suggest-item:last-child{border-bottom:none;}
-  .suggest-item:hover, .suggest-item:active{background:var(--panel-alt);}
-  .suggest-op{font-weight:600;color:var(--amber-text);}
-  .suggest-meta{color:var(--muted);margin-top:1px;}
-
-  .total-box{display:flex;align-items:center;justify-content:space-between;background:var(--panel-alt);border-radius:6px;padding:9px 12px;margin-bottom:12px;border:1px solid var(--border);}
-  .total-box span:first-child{font-size:.75rem;color:var(--muted-2);}
-  .total-box span:last-child{font-size:1.15rem;font-weight:600;color:var(--amber);}
-
-  .btn-add{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--amber);color:#12161F;border:none;padding:11px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;}
-  .btn-add:active{transform:scale(.98);}
-
-  .list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-  .list-header h2{margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--text);}
-  .btn-clear{background:none;border:none;color:var(--red);font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer;padding:0;}
-
-  .odometer{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-  .odometer-label{font-size:.72rem;color:var(--muted-2);font-family:'Oswald',sans-serif;letter-spacing:.05em;text-transform:uppercase;}
-  .odometer-digits{display:flex;gap:2px;background:#0A0D14;border-radius:5px;padding:5px 8px;border:1px solid var(--border);}
-  .odometer-digits span{width:1.1ch;text-align:center;font-size:1.2rem;font-weight:600;color:var(--amber);}
-
-  .empty-list{border:1px dashed var(--border-input);border-radius:10px;padding:30px 16px;text-align:center;font-size:.85rem;color:var(--muted-2);background:var(--panel-alt);}
-
-  .item-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
-  .item-card .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-  .item-op{font-size:.72rem;font-weight:600;background:var(--amber-bg);color:var(--amber-text);padding:2px 7px;border-radius:4px;border:1px solid rgba(242,169,59,.3);}
-  .item-client{font-size:.72rem;color:var(--muted);}
-  .item-desc{font-size:.88rem;margin:4px 0 2px;color:var(--text);}
-  .item-meta{font-size:.75rem;color:var(--muted-2);}
-  .item-meta strong{color:var(--amber);}
-  .btn-del{flex-shrink:0;background:none;border:none;color:var(--red);padding:8px;cursor:pointer;border-radius:6px;}
-  .btn-del:active{background:rgba(229,62,62,.15);}
-
-  .search-box{position:relative;margin-bottom:14px;}
-  .search-box input{width:100%;padding:11px 34px;border-radius:8px;border:1px solid var(--border-input);font-size:.9rem;outline:none;background:var(--panel);color:var(--text);}
-  .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted-2);}
-  .clear-icon{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--muted-2);background:none;border:none;cursor:pointer;padding:0;}
-
-  table{width:100%;min-width:640px;border-collapse:collapse;font-size:.85rem;}
-  thead tr{background:var(--panel-alt);border-bottom:2px solid var(--border);}
-  thead th{text-align:left;padding:9px 11px;font-size:.68rem;font-weight:600;color:var(--muted-2);text-transform:uppercase;letter-spacing:.04em;}
-  tbody td{padding:9px 11px;color:var(--text);border-bottom:1px solid var(--border);}
-  tbody tr:nth-child(even){background:var(--panel-alt);}
-  .table-wrap{border:1px solid var(--border);border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--panel);}
-  .table-empty{text-align:center;padding:26px;color:var(--muted-2);font-size:.85rem;}
-
-  .hidden{display:none !important;}
-
-  .bottombar{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:4px solid var(--amber);z-index:30;}
-  .bottombar-inner{max-width:900px;margin:0 auto;padding:11px 16px;display:flex;align-items:center;justify-content:space-between;}
-  .bottombar-inner span{font-size:.72rem;color:var(--muted-2);}
-  .btn-export{display:flex;align-items:center;gap:8px;background:var(--amber);color:#12161F;border:none;padding:9px 16px;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'Oswald',sans-serif;letter-spacing:.03em;text-transform:uppercase;}
-  .btn-export:disabled{opacity:.4;}
-
-  .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:50;padding:11px 16px;border-radius:8px;color:#fff;font-size:.85rem;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,.4);}
-  .toast.ok{background:var(--green);}
-  .toast.error{background:var(--red);}
-
-  .progress-track{width:100%;height:8px;border-radius:4px;background:var(--panel-alt);overflow:hidden;margin:6px 0;}
-  .progress-fill{height:100%;border-radius:4px;transition:width .25s ease;}
-  .badge-completado{font-size:.66rem;font-weight:600;background:var(--green);color:#fff;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;}
-  .registro-row{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;color:var(--muted);padding:5px 0;border-top:1px solid var(--border);}
-</style>
-</head>
-<body>
-
-<header>
-  <div class="wrap header-top">
-    <div class="brand">
-      <div class="brand-icon">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#12161F" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
-      </div>
-      <div>
-      <h1>Supervisión de Planta</h1>
-      <p id="counts">0 OP en catálogo · 0 en lista</p>
-    </div>
-    </div>
-    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden" />
-  </div>
-  <div class="wrap tabs" id="mainTabs">
-    <button class="tab-btn active" data-maintab="inventario">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
-      Inventario
-    </button>
-    <button class="tab-btn" data-maintab="maquinas">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M4 9h2M4 15h2M18 9h2M18 15h2M9 4v2M15 4v2M9 18v2M15 18v2"/></svg>
-      Máquinas
-    </button>
-    <button class="tab-btn" data-maintab="produccion">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-      Producción
-    </button>
-    <button class="tab-btn" data-maintab="resumen">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6h-2"/><path d="M13 3v6h6M9 13h6M9 17h6M9 9h1"/></svg>
-      Resumen
-    </button>
-    <button class="tab-btn" data-maintab="operadores">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Operadores
-    </button>
-  </div>
-  <div class="wrap tabs" id="subTabsInventario">
-    <button class="tab-btn active" data-tab="agregar">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
-      Agregar
-    </button>
-    <button class="tab-btn" data-tab="consultar">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      Consultar
-    </button>
-  </div>
-</header>
-
-<main class="wrap">
-
-<div id="tabInventario">
-
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">
-    <span id="countsInventario" style="font-size:.78rem;color:var(--muted);">0 OP en catálogo · 0 en lista</span>
-    <button class="btn-import" id="btnImport" style="background:var(--amber);color:#12161F;font-weight:600;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <span>Importar catálogo</span>
-    </button>
-  </div>
-
-  <div class="empty-catalog hidden" id="emptyCatalog">
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2" style="margin:0 auto 6px;display:block;"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
-    <p class="lead">Aún no hay catálogo cargado</p>
-    <p class="sub">Importa un Excel con columnas <strong>OP</strong>, <strong>Descripción</strong>, <strong>Cliente</strong>, <strong>Cantidad</strong> y <strong>SAP</strong> para autocompletar los datos al agregar piezas.</p>
-    <button id="btnImport2">Importar Excel</button>
-  </div>
-
-  <!-- VISTA AGREGAR -->
-  <div id="viewAgregar" class="grid">
-    <div class="panel">
-      <h2>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
-        Nueva pieza
-      </h2>
-
-      <div class="field" id="fieldOp">
-        <label>OP</label>
-        <input type="text" id="opInput" class="mono" placeholder="Ej. OP-10234" autocomplete="off" />
-        <svg class="check-icon hidden" id="checkIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <div class="suggest-box hidden" id="suggestBox"></div>
-      </div>
-
-      <div class="field">
-        <label>Descripción</label>
-        <input type="text" id="descInput" placeholder="Se autocompleta con la OP" />
-      </div>
-
-      <div class="field">
-        <label>Cliente</label>
-        <input type="text" id="clienteInput" placeholder="Se autocompleta con la OP" />
-      </div>
-
-      <div class="field">
-        <label>Observación (opcional)</label>
-        <input type="text" id="observacionInput" placeholder="Ej. caja abollada, revisar calidad..." />
-      </div>
-
-      <div class="chip-group">
-        <button type="button" class="chip active" id="chipCaja" data-tipo="caja">
-          <span class="chip-dot"></span> Caja
-        </button>
-        <button type="button" class="chip" id="chipPaquete" data-tipo="paquete">
-          <span class="chip-dot"></span> Paquete
-        </button>
-      </div>
-
-      <div class="row2">
-        <div class="field">
-          <label id="labelUnidades">Unid. x caja</label>
-          <input type="number" min="0" id="unidadesInput" class="mono" placeholder="0" />
-        </div>
-        <div class="field">
-          <label id="labelCantidad">Cant. cajas</label>
-          <input type="number" min="0" id="cajasInput" class="mono" placeholder="0" />
-        </div>
-      </div>
-
-      <div class="total-box">
-        <span>Total unidades</span>
-        <span id="totalForm" class="mono">0</span>
-      </div>
-
-      <button class="btn-add" id="btnAgregar">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
-        Agregar a la lista
-      </button>
-    </div>
-
-    <div>
-      <div class="list-header">
-        <h2>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 13h6M9 17h6"/></svg>
-          Lista pendiente de exportar
-        </h2>
-        <div style="display:flex;gap:12px;align-items:center;">
-          <button class="btn-clear" id="btnRespaldar" style="color:var(--muted-2);">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            Respaldar
-          </button>
-          <button class="btn-clear" id="btnRestaurar" style="color:var(--muted-2);">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
-            Restaurar
-          </button>
-          <button class="btn-clear hidden" id="btnVaciar">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"/></svg>
-            Vaciar
-          </button>
-        </div>
-      </div>
-
-      <div class="hidden" id="panelRespaldo" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
-        <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Selecciona todo el texto de abajo y cópialo (mantén presionado → Seleccionar todo → Copiar). Guárdalo en Notas o mándatelo por WhatsApp para no perderlo.</p>
-        <textarea id="textoRespaldo" readonly style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button id="btnCopiarRespaldo" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Copiar al portapapeles</button>
-          <button id="btnCerrarRespaldo" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8re  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:'IBM Plex Sans', sans-serif;
-    -webkit-tap-highlight-color: transparent;
-    padding-bottom:78px;
-  }
-  .mono{font-family:'IBM Plex Mono', monospace;}
-  .label-font{font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:.03em;}
-  .wrap{max-width:900px;margin:0 auto;padding:0 16px;}
-
-  header{position:sticky;top:0;z-index:30;background:var(--dark);border-bottom:3px solid var(--amber);}
-  .header-top{display:flex;align-items:center;justify-content:space-between;padding:6px 0;}
-  .brand{display:flex;align-items:center;gap:8px;}
-  .brand-icon{width:20px;height:20px;border-radius:5px;background:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .brand-icon svg{width:13px;height:13px;}
-  .brand h1{color:#fff;margin:0;font-size:.85rem;font-weight:600;line-height:1;}
-  .brand p{display:none;}
-  .btn-import{display:flex;align-items:center;gap:6px;background:var(--dark-2);color:#E7EAF0;border:none;padding:6px 10px;border-radius:6px;font-size:.73rem;font-weight:500;cursor:pointer;}
-  .btn-import:active{background:var(--dark-3);}
-
-  .tabs{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:6px;}
-  .tab-btn{flex:1 1 auto;justify-content:center;}
-  .tab-btn{display:flex;align-items:center;gap:5px;background:var(--dark-2);border:none;color:var(--muted-2);padding:6px 10px;border-radius:16px;font-size:.68rem;font-weight:500;cursor:pointer;font-family:'Oswald',sans-serif;letter-spacing:.02em;text-transform:uppercase;}
-  .tab-btn svg{width:12px;height:12px;}
-  .tab-btn.active{color:#1F2532;background:var(--amber);}
-
-  main{padding:16px 0 20px;}
-
-  .empty-catalog{border:2px dashed #C9CCC2;background:var(--panel-alt);border-radius:10px;padding:28px 16px;text-align:center;margin-bottom:20px;}
-  .empty-catalog p{margin:4px 0;}
-  .empty-catalog .lead{font-size:.9rem;font-weight:600;}
-  .empty-catalog .sub{font-size:.78rem;color:var(--muted);max-width:420px;margin:0 auto 12px;}
-  .empty-catalog button{margin-top:6px;display:inline-flex;gap:8px;align-items:center;background:var(--dark);color:#fff;border:none;padding:10px 18px;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;}
-
-  .grid{display:grid;grid-template-columns:1fr;gap:22px;}
-  @media(min-width:800px){.grid{grid-template-columns:2fr 3fr;}}
-
-  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px;}
-  .panel h2{margin:0 0 14px;font-size:.85rem;display:flex;align-items:center;gap:8px;color:var(--dark);}
-
-  .field{margin-bottom:12px;position:relative;}
-  .field label{display:block;font-size:.72rem;font-weight:500;color:#5B6272;margin-bottom:4px;}
-  .field input{width:100%;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;background:#fff;color:var(--text);}
-  .field input:focus{box-shadow:0 0 0 2px rgba(31,37,50,.15);}
-  .field.ok input{border-color:var(--green);}
-  .check-icon{position:absolute;right:10px;top:31px;color:var(--green);}
-
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-
-  .chip-group{display:flex;gap:8px;margin-bottom:12px;}
-  .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 8px;border-radius:6px;border:1px solid var(--border-input);background:#fff;font-size:.82rem;font-weight:500;cursor:pointer;color:var(--muted);}
-  .chip.active{background:var(--dark);border-color:var(--dark);color:#fff;}
-  .chip.active .chip-dot{background:var(--amber);}
-  .chip-dot{width:8px;height:8px;border-radius:50%;background:var(--border-input);flex-shrink:0;}
-
-  .suggest-box{position:absolute;z-index:20;width:100%;margin-top:2px;background:#fff;border:1px solid var(--border-input);border-radius:6px;max-height:220px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.12);}
-  .suggest-item{width:100%;text-align:left;padding:9px 11px;border:none;background:none;border-bottom:1px solid #EEE;cursor:pointer;display:block;font-size:.78rem;}
-  .suggest-item:last-child{border-bottom:none;}
-  .suggest-item:hover, .suggest-item:active{background:#F5F5F0;}
-  .suggest-op{font-weight:600;}
-  .suggest-meta{color:var(--muted);margin-top:1px;}
-
-  .total-box{display:flex;align-items:center;justify-content:space-between;background:var(--panel-alt);border-radius:6px;padding:9px 12px;margin-bottom:12px;}
-  .total-box span:first-child{font-size:.75rem;color:#5B6272;}
-  .total-box span:last-child{font-size:1.15rem;font-weight:600;color:var(--dark);}
-
-  .btn-add{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--dark);color:#fff;border:none;padding:11px;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;}
-  .btn-add:active{transform:scale(.98);}
-
-  .list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-  .list-header h2{margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--dark);}
-  .btn-clear{background:none;border:none;color:var(--red);font-size:.75rem;display:flex;align-items:center;gap:4px;cursor:pointer;padding:0;}
-
-  .odometer{background:var(--dark);border-radius:10px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-  .odometer-label{font-size:.72rem;color:var(--muted-2);font-family:'Oswald',sans-serif;letter-spacing:.05em;text-transform:uppercase;}
-  .odometer-digits{display:flex;gap:2px;background:#11151C;border-radius:5px;padding:5px 8px;}
-  .odometer-digits span{width:1.1ch;text-align:center;font-size:1.2rem;font-weight:600;color:var(--amber);}
-
-  .empty-list{border:1px dashed var(--border-input);border-radius:10px;padding:30px 16px;text-align:center;font-size:.85rem;color:var(--muted-2);}
-
-  .item-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
-  .item-card .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-  .item-op{font-size:.72rem;font-weight:600;background:var(--amber-bg);color:var(--amber-text);padding:2px 7px;border-radius:4px;}
-  .item-client{font-size:.72rem;color:var(--muted);}
-  .item-desc{font-size:.88rem;margin:4px 0 2px;}
-  .item-meta{font-size:.75rem;color:var(--muted-2);}
-  .item-meta strong{color:var(--dark);}
-  .btn-del{flex-shrink:0;background:none;border:none;color:var(--red);padding:8px;cursor:pointer;border-radius:6px;}
-  .btn-del:active{background:#fdeceb;}
-
-  .search-box{position:relative;margin-bottom:14px;}
-  .search-box input{width:100%;padding:11px 34px;border-radius:8px;border:1px solid var(--border-input);font-size:.9rem;outline:none;background:#fff;}
-  .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted-2);}
-  .clear-icon{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--muted-2);background:none;border:none;cursor:pointer;padding:0;}
-
-  table{width:100%;min-width:640px;border-collapse:collapse;font-size:.85rem;}
-  thead tr{background:var(--dark);}
-  thead th{text-align:left;padding:9px 11px;font-size:.68rem;font-weight:500;color:#E7EAF0;text-transform:uppercase;letter-spacing:.04em;}
-  tbody td{padding:9px 11px;}
-  tbody tr:nth-child(even){background:var(--panel-alt);}
-  .table-wrap{border:1px solid var(--border);border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .table-empty{text-align:center;padding:26px;color:var(--muted-2);font-size:.85rem;}
-
-  .hidden{display:none !important;}
-
-  .bottombar{position:fixed;bottom:0;left:0;right:0;background:var(--dark);border-top:4px solid var(--amber);z-index:30;}
-  .bottombar-inner{max-width:900px;margin:0 auto;padding:11px 16px;display:flex;align-items:center;justify-content:space-between;}
-  .bottombar-inner span{font-size:.72rem;color:var(--muted-2);}
-  .btn-export{display:flex;align-items:center;gap:8px;background:var(--amber);color:var(--dark);border:none;padding:9px 16px;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'Oswald',sans-serif;letter-spacing:.03em;text-transform:uppercase;}
-  .btn-export:disabled{opacity:.4;}
-
-  .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:50;padding:11px 16px;border-radius:8px;color:#fff;font-size:.85rem;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,.2);}
-  .toast.ok{background:var(--green);}
-  .toast.error{background:var(--red);}
-
-  .progress-track{width:100%;height:8px;border-radius:4px;background:#EDEEE8;overflow:hidden;margin:6px 0;}
-  .progress-fill{height:100%;border-radius:4px;transition:width .25s ease;}
-  .badge-completado{font-size:.66rem;font-weight:600;background:var(--green);color:#fff;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em;}
-  .registro-row{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;color:var(--muted);padding:5px 0;border-top:1px solid #F0F0EA;}
-</style>
-</head>
-<body>
-
-<header>
-  <div class="wrap header-top">
-    <div class="brand">
-      <div class="brand-icon">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F2532" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
-      </div>
-      <div>
-      <h1>Supervisión de Planta</h1>
-      <p id="counts">0 OP en catálogo · 0 en lista</p>
-    </div>
-    </div>
-    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden" />
-  </div>
-  <div class="wrap tabs" id="mainTabs">
-    <button class="tab-btn active" data-maintab="inventario">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
-      Inventario
-    </button>
-    <button class="tab-btn" data-maintab="maquinas">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M4 9h2M4 15h2M18 9h2M18 15h2M9 4v2M15 4v2M9 18v2M15 18v2"/></svg>
-      Máquinas
-    </button>
-    <button class="tab-btn" data-maintab="produccion">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-      Producción
-    </button>
-    <button class="tab-btn" data-maintab="resumen">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6h-2"/><path d="M13 3v6h6M9 13h6M9 17h6M9 9h1"/></svg>
-      Resumen
-    </button>
-    <button class="tab-btn" data-maintab="operadores">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Operadores
-    </button>
-  </div>
-  <div class="wrap tabs" id="subTabsInventario">
-    <button class="tab-btn active" data-tab="agregar">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
-      Agregar
-    </button>
-    <button class="tab-btn" data-tab="consultar">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      Consultar
-    </button>
-  </div>
-</header>
-
-<main class="wrap">
-
-<div id="tabInventario">
-
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">
-    <span id="countsInventario" style="font-size:.78rem;color:var(--muted);">0 OP en catálogo · 0 en lista</span>
-    <button class="btn-import" id="btnImport" style="background:var(--dark);color:#fff;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <span>Importar catálogo</span>
-    </button>
-  </div>
-
-  <div class="empty-catalog hidden" id="emptyCatalog">
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2" style="margin:0 auto 6px;display:block;"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
-    <p class="lead">Aún no hay catálogo cargado</p>
-    <p class="sub">Importa un Excel con columnas <strong>OP</strong>, <strong>Descripción</strong>, <strong>Cliente</strong>, <strong>Cantidad</strong> y <strong>SAP</strong> para autocompletar los datos al agregar piezas.</p>
-    <button id="btnImport2">Importar Excel</button>
-  </div>
-
-  <!-- VISTA AGREGAR -->
-  <div id="viewAgregar" class="grid">
-    <div class="panel">
-      <h2>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
-        Nueva pieza
-      </h2>
-
-      <div class="field" id="fieldOp">
-        <label>OP</label>
-        <input type="text" id="opInput" class="mono" placeholder="Ej. OP-10234" autocomplete="off" />
-        <svg class="check-icon hidden" id="checkIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <div class="suggest-box hidden" id="suggestBox"></div>
-      </div>
-
-      <div class="field">
-        <label>Descripción</label>
-        <input type="text" id="descInput" placeholder="Se autocompleta con la OP" />
-      </div>
-
-      <div class="field">
-        <label>Cliente</label>
-        <input type="text" id="clienteInput" placeholder="Se autocompleta con la OP" />
-      </div>
-
-      <div class="field">
-        <label>Observación (opcional)</label>
-        <input type="text" id="observacionInput" placeholder="Ej. caja abollada, revisar calidad..." />
-      </div>
-
-      <div class="chip-group">
-        <button type="button" class="chip active" id="chipCaja" data-tipo="caja">
-          <span class="chip-dot"></span> Caja
-        </button>
-        <button type="button" class="chip" id="chipPaquete" data-tipo="paquete">
-          <span class="chip-dot"></span> Paquete
-        </button>
-      </div>
-
-      <div class="row2">
-        <div class="field">
-          <label id="labelUnidades">Unid. x caja</label>
-          <input type="number" min="0" id="unidadesInput" class="mono" placeholder="0" />
-        </div>
-        <div class="field">
-          <label id="labelCantidad">Cant. cajas</label>
-          <input type="number" min="0" id="cajasInput" class="mono" placeholder="0" />
-        </div>
-      </div>
-
-      <div class="total-box">
-        <span>Total unidades</span>
-        <span id="totalForm" class="mono">0</span>
-      </div>
-
-      <button class="btn-add" id="btnAgregar">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
-        Agregar a la lista
-      </button>
-    </div>
-
-    <div>
-      <div class="list-header">
-        <h2>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 13h6M9 17h6"/></svg>
-          Lista pendiente de exportar
-        </h2>
-        <div style="display:flex;gap:12px;align-items:center;">
-          <button class="btn-clear" id="btnRespaldar" style="color:var(--dark-3);">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            Respaldar
-          </button>
-          <button class="btn-clear" id="btnRestaurar" style="color:var(--dark-3);">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
-            Restaurar
-          </button>
-          <button class="btn-clear hidden" id="btnVaciar">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"/></svg>
-            Vaciar
-          </button>
-        </div>
-      </div>
-
-      <div class="hidden" id="panelRespaldo" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
-        <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Selecciona todo el texto de abajo y cópialo (mantén presionado → Seleccionar todo → Copiar). Guárdalo en Notas o mándatelo por WhatsApp para no perderlo.</p>
-        <textarea id="textoRespaldo" readonly style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button id="btnCopiarRespaldo" style="flex:1;background:var(--dark);color:#fff;border:none;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer;">Copiar al portapapeles</button>
-          <button id="btnCerrarRespaldo" style="background:none;border:1px solid var(--border-input);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+          <button id="btnCerrarRespaldo" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
         </div>
       </div>
 
@@ -883,8 +323,8 @@
         <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Pega aquí el texto que copiaste con "Respaldar" desde la otra app.</p>
         <textarea id="textoRestaurar" placeholder="Pega aquí el texto de respaldo…" style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
         <div style="display:flex;gap:8px;margin-top:8px;">
-          <button id="btnConfirmarRestaurar" style="flex:1;background:var(--dark);color:#fff;border:none;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer;">Restaurar lista</button>
-          <button id="btnCerrarRestaurar" style="background:none;border:1px solid var(--border-input);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+          <button id="btnConfirmarRestaurar" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Restaurar lista</button>
+          <button id="btnCerrarRestaurar" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
         </div>
       </div>
 
@@ -911,7 +351,7 @@
 
 </div><!-- /tabInventario -->
 
-<div id="tabMaquinas" class="hidden">
+<div id="tabMaquinas" class="tab-page hidden">
 
   <div class="panel" style="margin-bottom:18px;">
     <h2>
@@ -920,22 +360,22 @@
     </h2>
     <div style="display:flex;gap:8px;align-items:flex-end;">
       <textarea id="nombreMaquinaInput" placeholder="Ej. Troqueladora 1, Troqueladora 2&#10;(o una por línea)" rows="1" style="flex:1;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;resize:vertical;font-family:inherit;"></textarea>
-      <button id="btnAgregarMaquina" style="background:var(--dark);color:#fff;border:none;padding:9px 16px;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;white-space:nowrap;">Agregar</button>
+      <button id="btnAgregarMaquina" style="background:var(--amber);color:#12161F;border:none;padding:9px 16px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">Agregar</button>
     </div>
     <p style="font-size:.72rem;color:var(--muted-2);margin:6px 0 0;">Puedes agregar varias separadas por coma o una por línea.</p>
   </div>
 
   <div class="list-header">
-    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--dark);">
+    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--text);">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
       Máquinas (<span id="totalMaquinas">0</span>)
     </h2>
     <div style="display:flex;gap:12px;align-items:center;">
-      <button class="btn-clear" id="btnRespaldarMaquinas" style="color:var(--dark-3);">
+      <button class="btn-clear" id="btnRespaldarMaquinas" style="color:var(--muted-2);">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         Respaldar
       </button>
-      <button class="btn-clear" id="btnRestaurarMaquinas" style="color:var(--dark-3);">
+      <button class="btn-clear" id="btnRestaurarMaquinas" style="color:var(--muted-2);">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
         Restaurar
       </button>
@@ -946,8 +386,8 @@
     <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Selecciona todo el texto de abajo y cópialo. Guárdalo en Notas o mándatelo por WhatsApp para no perderlo.</p>
     <textarea id="textoRespaldoMaquinas" readonly style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
     <div style="display:flex;gap:8px;margin-top:8px;">
-      <button id="btnCopiarRespaldoMaquinas" style="flex:1;background:var(--dark);color:#fff;border:none;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer;">Copiar al portapapeles</button>
-      <button id="btnCerrarRespaldoMaquinas" style="background:none;border:1px solid var(--border-input);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+      <button id="btnCopiarRespaldoMaquinas" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Copiar al portapapeles</button>
+      <button id="btnCerrarRespaldoMaquinas" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
     </div>
   </div>
 
@@ -955,8 +395,8 @@
     <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Pega aquí el texto que copiaste con "Respaldar".</p>
     <textarea id="textoRestaurarMaquinas" placeholder="Pega aquí el texto de respaldo…" style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
     <div style="display:flex;gap:8px;margin-top:8px;">
-      <button id="btnConfirmarRestaurarMaquinas" style="flex:1;background:var(--dark);color:#fff;border:none;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer;">Restaurar máquinas</button>
-      <button id="btnCerrarRestaurarMaquinas" style="background:none;border:1px solid var(--border-input);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+      <button id="btnConfirmarRestaurarMaquinas" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Restaurar máquinas</button>
+      <button id="btnCerrarRestaurarMaquinas" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
     </div>
   </div>
 
@@ -967,15 +407,15 @@
 
 </div><!-- /tabMaquinas -->
 
-<div id="tabProduccion" class="hidden">
+<div id="tabProduccion" class="tab-page hidden">
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <div style="font-size:.85rem;font-weight:600;color:var(--dark);display:flex;align-items:center;gap:8px;">
+    <div style="font-size:.85rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
       Turno actual
     </div>
     <div style="display:flex;gap:10px;">
-      <button class="btn-clear" id="btnHistorial" style="color:var(--dark-3);">
+      <button class="btn-clear" id="btnHistorial" style="color:var(--muted-2);">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
         Historial
       </button>
@@ -987,15 +427,15 @@
   </div>
 
   <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-    <button class="btn-clear" id="btnGuardarPlantilla" style="color:var(--dark-3);">
+    <button class="btn-clear" id="btnGuardarPlantilla" style="color:var(--muted-2);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
       Guardar plantilla
     </button>
-    <button class="btn-clear" id="btnUsarPlantilla" style="color:var(--dark-3);">
+    <button class="btn-clear" id="btnUsarPlantilla" style="color:var(--muted-2);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
       Usar plantilla
     </button>
-    <button class="btn-clear" id="btnExportarTurnoExcel" style="color:var(--dark-3);">
+    <button class="btn-clear" id="btnExportarTurnoExcel" style="color:var(--muted-2);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Exportar Excel
     </button>
@@ -1003,8 +443,8 @@
 
   <div class="hidden" id="panelHistorial" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <span style="font-size:.82rem;font-weight:600;color:var(--dark);">Turnos anteriores</span>
-      <button id="btnCerrarHistorial" style="background:none;border:1px solid var(--border-input);padding:5px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;">Cerrar</button>
+      <span style="font-size:.82rem;font-weight:600;color:var(--text);">Turnos anteriores</span>
+      <button id="btnCerrarHistorial" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:5px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;">Cerrar</button>
     </div>
     <div id="historialLista" style="max-height:320px;overflow-y:auto;"></div>
   </div>
@@ -1015,11 +455,11 @@
   </div>
 
   <div style="display:flex;gap:12px;margin-bottom:6px;">
-    <button class="btn-clear" id="btnRespaldarProd" style="color:var(--dark-3);">
+    <button class="btn-clear" id="btnRespaldarProd" style="color:var(--muted-2);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
       Respaldar
     </button>
-    <button class="btn-clear" id="btnRestaurarProd" style="color:var(--dark-3);">
+    <button class="btn-clear" id="btnRestaurarProd" style="color:var(--muted-2);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
       Restaurar
     </button>
@@ -1029,8 +469,8 @@
     <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Selecciona todo el texto de abajo y cópialo. Guárdalo en Notas o mándatelo por WhatsApp para no perderlo.</p>
     <textarea id="textoRespaldoProd" readonly style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
     <div style="display:flex;gap:8px;margin-top:8px;">
-      <button id="btnCopiarRespaldoProd" style="flex:1;background:var(--dark);color:#fff;border:none;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer;">Copiar al portapapeles</button>
-      <button id="btnCerrarRespaldoProd" style="background:none;border:1px solid var(--border-input);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+      <button id="btnCopiarRespaldoProd" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Copiar al portapapeles</button>
+      <button id="btnCerrarRespaldoProd" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
     </div>
   </div>
 
@@ -1038,8 +478,8 @@
     <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Pega aquí el texto que copiaste con "Respaldar".</p>
     <textarea id="textoRestaurarProd" placeholder="Pega aquí el texto de respaldo…" style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
     <div style="display:flex;gap:8px;margin-top:8px;">
-      <button id="btnConfirmarRestaurarProd" style="flex:1;background:var(--dark);color:#fff;border:none;padding:9px;border-radius:6px;font-size:.8rem;cursor:pointer;">Restaurar turno</button>
-      <button id="btnCerrarRestaurarProd" style="background:none;border:1px solid var(--border-input);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+      <button id="btnConfirmarRestaurarProd" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Restaurar turno</button>
+      <button id="btnCerrarRestaurarProd" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
     </div>
   </div>
 
@@ -1048,13 +488,13 @@
 
 </div><!-- /tabProduccion -->
 
-<div id="tabResumen" class="hidden">
+<div id="tabResumen" class="tab-page hidden">
   <div class="list-header">
-    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--dark);">
+    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--text);">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6h-2"/><path d="M13 3v6h6M9 13h6M9 17h6M9 9h1"/></svg>
       Resumen de producción
     </h2>
-    <button class="btn-clear" id="btnExportarResumenExcel" style="color:var(--dark-3);">
+    <button class="btn-clear" id="btnExportarResumenExcel" style="color:var(--muted-2);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Exportar Excel
     </button>
@@ -1063,7 +503,7 @@
   <div id="resumenContainer"></div>
 </div><!-- /tabResumen -->
 
-<div id="tabOperadores" class="hidden">
+<div id="tabOperadores" class="tab-page hidden">
   <div class="panel" style="margin-bottom:18px;">
     <h2>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
@@ -1071,12 +511,12 @@
     </h2>
     <div style="display:flex;gap:8px;align-items:flex-end;">
       <textarea id="nombreOperadorInput" placeholder="Ej. Juan Pérez, María López&#10;(o uno por línea)" rows="1" style="flex:1;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;resize:vertical;font-family:inherit;"></textarea>
-      <button id="btnAgregarOperador" style="background:var(--dark);color:#fff;border:none;padding:9px 16px;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;white-space:nowrap;">Agregar</button>
+      <button id="btnAgregarOperador" style="background:var(--amber);color:#12161F;border:none;padding:9px 16px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">Agregar</button>
     </div>
     <p style="font-size:.72rem;color:var(--muted-2);margin:6px 0 0;">Puedes agregar varios separados por coma o uno por línea.</p>
   </div>
   <div class="list-header">
-    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--dark);">
+    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--text);">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       Operadores (<span id="totalOperadores">0</span>)
     </h2>
@@ -1096,7 +536,7 @@
     </button>
   </div>
   <div class="bottombar-inner hidden" id="bottombarProduccion">
-    <button id="btnCopiarReporteProd" style="background:none;border:1px solid var(--dark-3);color:#E7EAF0;padding:9px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;">Copiar texto</button>
+    <button id="btnCopiarReporteProd" style="background:none;border:1px solid var(--border-input);color:#E7EAF0;padding:9px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;">Copiar texto</button>
     <button class="btn-export" id="btnReportarWhatsappProd" style="background:#25D366;color:#0B2E13;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2z"/></svg>
       Reportar WhatsApp
@@ -1162,7 +602,6 @@
       if(op) operadores = JSON.parse(op);
     }catch(e){}
 
-    // migración: "activa" ahora vive en la máquina (antes vivía en el turno)
     var migroActiva = false;
     maquinas.forEach(function(m){
       if(typeof m.activa === "undefined"){
@@ -1173,7 +612,6 @@
     });
     if(migroActiva) guardarMaquinas();
 
-    // migración: "objetivo" ahora es manual (antes se calculaba del catálogo); + operador/motivoParada/merma
     var migroObjetivo = false;
     turno.forEach(function(t){
       if(typeof t.objetivo === "undefined"){
@@ -1188,7 +626,7 @@
       });
     });
     if(migroObjetivo) guardarTurno();
-    // migración: piezas guardadas antes de que existiera el tipo caja/paquete
+
     var huboMigracion = false;
     lista.forEach(function(item){
       if(!item.tipoEmpaque){
@@ -1296,7 +734,7 @@
   chipCaja.addEventListener("click", function(){ seleccionarTipoEmpaque("caja"); });
   chipPaquete.addEventListener("click", function(){ seleccionarTipoEmpaque("paquete"); });
 
-  // ---------- pestañas principales (Inventario / Máquinas / Producción / Operadores) ----------
+  // ---------- pestañas principales ----------
   var subTabsInventario = $("subTabsInventario"), tabInventario = $("tabInventario"),
       tabMaquinas = $("tabMaquinas"), tabProduccion = $("tabProduccion"), tabResumen = $("tabResumen"), tabOperadores = $("tabOperadores"),
       bottombarInventario = $("bottombarInventario"),
@@ -1531,7 +969,7 @@
     actualizarContadores();
   });
 
-  // ---------- respaldar / restaurar (texto plano, para sacar datos de un WebView con descargas rotas) ----------
+  // ---------- respaldar / restaurar ----------
   var panelRespaldo = $("panelRespaldo"), panelRestaurar = $("panelRestaurar"),
       textoRespaldo = $("textoRespaldo"), textoRestaurar = $("textoRestaurar");
 
@@ -1606,7 +1044,7 @@
     });
     var html = '<div class="table-wrap"><table><thead><tr><th>OP</th><th>Descripción</th><th>Cliente</th><th>Cant. total</th><th>SAP</th></tr></thead><tbody>';
     resultados.slice(0,200).forEach(function(r){
-      html += '<tr><td class="mono" style="font-weight:600;">'+escapeHtml(r.op)+'</td><td>'+escapeHtml(r.descripcion)+'</td><td style="color:var(--muted);">'+escapeHtml(r.cliente)+'</td><td class="mono" style="color:var(--muted);">'+(r.cantidadTotal ? escapeHtml(r.cantidadTotal) : "—")+'</td><td class="mono" style="color:var(--muted);">'+(r.sap ? escapeHtml(r.sap) : "—")+'</td></tr>';
+      html += '<tr><td class="mono" style="font-weight:600;color:var(--amber-text);">'+escapeHtml(r.op)+'</td><td>'+escapeHtml(r.descripcion)+'</td><td style="color:var(--muted-2);">'+escapeHtml(r.cliente)+'</td><td class="mono" style="color:var(--muted-2);">'+(r.cantidadTotal ? escapeHtml(r.cantidadTotal) : "—")+'</td><td class="mono" style="color:var(--muted-2);">'+(r.sap ? escapeHtml(r.sap) : "—")+'</td></tr>';
     });
     html += '</tbody></table>';
     if(resultados.length === 0){
@@ -1625,11 +1063,6 @@
   });
 
   // ---------- exportar ----------
-  // Antes de exportar, se agrupan las piezas con la misma OP + mismo tipo de
-  // empaque (caja/paquete) + misma cantidad de unidades por empaque, sumando
-  // sus cantidades en una sola fila. Si la cantidad x empaque es distinta,
-  // NO se combinan aunque sea la misma OP. La lista en pantalla no se modifica,
-  // solo el archivo exportado.
   function agruparParaExportar(items){
     var mapa = {};
     var orden = [];
@@ -1661,12 +1094,6 @@
     });
   }
 
-  // NOTA: dentro de apps generadas con WebIntoApp/wrappers similares, tanto la
-  // descarga por Blob+<a download> como por data: URI pueden fallar (el
-  // manejador de descargas nativo de esos wrappers suele estar mal implementado).
-  // La forma más confiable es usar la Web Share API, que abre el selector nativo
-  // de Android ("Guardar en Archivos", Drive, WhatsApp, etc.) sin pasar por ese
-  // manejador roto.
   btnExportar.addEventListener("click", function(){
     if(lista.length === 0){ mostrarToast("error","La lista está vacía"); return; }
     try{
@@ -1705,12 +1132,12 @@
             navigator.share({files:[archivo], title: nombre})
               .then(function(){ mostrarToast("ok","Excel exportado"); })
               .catch(function(err){
-                if(err && err.name === "AbortError") return; // el usuario canceló el share, no es error
+                if(err && err.name === "AbortError") return;
                 intentarDescargaClasica(blob, nombre);
               });
             compartido = true;
           }
-        }catch(e){ /* sigue al fallback */ }
+        }catch(e){ }
       }
 
       if(!compartido){
@@ -1755,21 +1182,57 @@
     if(!compartido) intentarDescargaClasica(blob, nombre);
   }
 
-  // filas del turno (estilo similar a la planilla de planta: Máquina, OP, Producto, Operador, Total, Merma, Observaciones)
   function filasTurnoParaExcel(){
-    return ordenarPorNombre(maquinas.filter(function(m){ return m.activa; })).map(function(m){
+    var filas = [];
+    ordenarPorNombre(maquinas.filter(function(m){ return m.activa; })).forEach(function(m){
       var t = obtenerTurno(m.id);
-      var match = buscarEnCatalogo(t.op);
-      return {
-        maquina: m.nombre,
-        op: t.op || "",
-        producto: match ? match.descripcion : "",
-        operador: t.operador || "",
-        total: totalProducido(t),
-        merma: totalMerma(t),
-        observaciones: t.motivoParada || ""
-      };
+      if(!t.registros || t.registros.length === 0){
+        var match = buscarEnCatalogo(t.op);
+        filas.push({
+          maquina: m.nombre,
+          op: t.op || "",
+          producto: match ? match.descripcion : "",
+          operador: t.operador || "",
+          total: 0,
+          merma: 0,
+          observaciones: t.motivoParada || ""
+        });
+      } else {
+        var grupos = {};
+        var ordenOps = [];
+        t.registros.forEach(function(r){
+          var opKey = r.op || t.op || "";
+          if(!grupos[opKey]){
+            var match = buscarEnCatalogo(opKey);
+            grupos[opKey] = {
+              op: opKey,
+              descripcion: r.descripcion || (match ? match.descripcion : ""),
+              total: 0,
+              merma: 0
+            };
+            ordenOps.push(opKey);
+          }
+          grupos[opKey].total += (r.cantidad || 0);
+          grupos[opKey].merma += (r.merma || 0);
+        });
+
+        ordenOps.forEach(function(opKey){
+          var g = grupos[opKey];
+          var match = buscarEnCatalogo(g.op);
+          var prodDesc = g.descripcion || (match ? match.descripcion : "");
+          filas.push({
+            maquina: m.nombre,
+            op: g.op,
+            producto: prodDesc,
+            operador: t.operador || "",
+            total: g.total,
+            merma: g.merma,
+            observaciones: t.motivoParada || ""
+          });
+        });
+      }
     });
+    return filas;
   }
 
   function construirLibroTurno(filas, titulo){
@@ -1795,7 +1258,7 @@
     catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
   });
 
-  // ---------- resumen de producción (estilo planilla de planta: MAQUINA / OP'S / PRODUCTO / TOTAL / OBSERVACIONES) ----------
+  // ---------- resumen de producción ----------
   var resumenContainer = $("resumenContainer"), emptyResumen = $("emptyResumen");
 
   function construirLibroResumen(filas, titulo){
@@ -1823,9 +1286,9 @@
     var sumaTotal = filas.reduce(function(acc,f){ return acc + f.total; }, 0);
     var html = '<div class="table-wrap"><table><thead><tr><th>Máquina</th><th>OP</th><th>Producto</th><th>Total</th><th>Observaciones</th></tr></thead><tbody>';
     filas.forEach(function(f){
-      html += '<tr><td class="mono" style="font-weight:600;">'+escapeHtml(f.maquina)+'</td><td class="mono">'+(f.op ? escapeHtml(f.op) : "—")+'</td><td>'+(f.producto ? escapeHtml(f.producto) : "—")+'</td><td class="mono" style="font-weight:600;">'+f.total+'</td><td style="color:var(--muted);">'+(f.observaciones ? escapeHtml(f.observaciones) : "—")+'</td></tr>';
+      html += '<tr><td class="mono" style="font-weight:600;color:var(--text);">'+escapeHtml(f.maquina)+'</td><td class="mono" style="color:var(--amber-text);font-weight:600;">'+(f.op ? escapeHtml(f.op) : "—")+'</td><td>'+(f.producto ? escapeHtml(f.producto) : "—")+'</td><td class="mono" style="font-weight:600;color:var(--amber);">'+f.total+'</td><td style="color:var(--muted-2);">'+(f.observaciones ? escapeHtml(f.observaciones) : "—")+'</td></tr>';
     });
-    html += '<tr style="background:var(--panel-alt);"><td colspan="3" class="mono" style="font-weight:700;">TOTAL</td><td class="mono" style="font-weight:700;">'+sumaTotal+'</td><td></td></tr>';
+    html += '<tr style="background:var(--panel-alt);"><td colspan="3" class="mono" style="font-weight:700;color:var(--text);">TOTAL</td><td class="mono" style="font-weight:700;color:var(--amber);">'+sumaTotal+'</td><td></td></tr>';
     html += '</tbody></table></div>';
     resumenContainer.innerHTML = html;
   }
@@ -1840,7 +1303,7 @@
     catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
   });
 
-  // ---------- máquinas (catálogo simple) ----------
+  // ---------- máquinas ----------
   var nombreMaquinaInput = $("nombreMaquinaInput"), maquinasContainer = $("maquinasContainer"),
       emptyMaquinas = $("emptyMaquinas"), totalMaquinasEl = $("totalMaquinas");
 
@@ -1860,7 +1323,7 @@
     mostrarToast("ok", nombres.length > 1 ? nombres.length + " máquinas agregadas" : "Máquina agregada");
   });
 
-  // ---------- operadores (lista simple) ----------
+  // ---------- operadores ----------
   var nombreOperadorInput = $("nombreOperadorInput"), operadoresContainer = $("operadoresContainer"),
       emptyOperadores = $("emptyOperadores"), totalOperadoresEl = $("totalOperadores");
 
@@ -1868,7 +1331,7 @@
     var card = document.createElement("div");
     card.className = "item-card";
     var nombreEl = document.createElement("span");
-    nombreEl.style.cssText = "font-weight:600;font-size:.9rem;";
+    nombreEl.style.cssText = "font-weight:600;font-size:.9rem;color:var(--text);";
     nombreEl.textContent = item.nombre;
     var btnDel = document.createElement("button");
     btnDel.className = "btn-del";
@@ -1919,7 +1382,7 @@
     card.className = "item-card";
     var nombreEl = document.createElement("span");
     nombreEl.className = "mono";
-    nombreEl.style.cssText = "font-weight:600;font-size:.95rem;";
+    nombreEl.style.cssText = "font-weight:600;font-size:.95rem;color:var(--text);";
     nombreEl.textContent = item.nombre;
 
     var derecha = document.createElement("div");
@@ -1932,7 +1395,7 @@
       toggle.style.cssText = "padding:6px 14px;border-radius:20px;border:1px solid " +
         (item.activa ? "var(--green)" : "var(--border-input)") +
         ";font-size:.72rem;font-weight:600;cursor:pointer;background:" +
-        (item.activa ? "var(--green)" : "#fff") + ";color:" + (item.activa ? "#fff" : "var(--muted)") + ";";
+        (item.activa ? "var(--green)" : "var(--panel-alt)") + ";color:" + (item.activa ? "#fff" : "var(--muted)") + ";";
     }
     pintarToggle();
     toggle.addEventListener("click", function(){
@@ -2017,7 +1480,7 @@
     mostrarToast("ok", agregadas + " máquina(s) restaurada(s)");
   });
 
-  // ---------- producción (turno: máquinas activas + OP asignada) ----------
+  // ---------- producción ----------
   var produccionContainer = $("produccionContainer"), emptyProd = $("emptyProd"),
       odometerProd = $("odometerProd");
 
@@ -2049,7 +1512,6 @@
 
     var expandido = !!expandidos[maquina.id];
 
-    // ---- encabezado (siempre visible, clic para desplegar) ----
     var header = document.createElement("div");
     header.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;";
 
@@ -2057,7 +1519,7 @@
     izq.style.cssText = "min-width:0;";
     var nombreEl = document.createElement("div");
     nombreEl.className = "mono";
-    nombreEl.style.cssText = "font-weight:600;font-size:.92rem;";
+    nombreEl.style.cssText = "font-weight:600;font-size:.92rem;color:var(--text);";
     nombreEl.textContent = maquina.nombre;
     var subEl = document.createElement("div");
     subEl.style.cssText = "font-size:.74rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
@@ -2068,7 +1530,7 @@
     der.style.cssText = "display:flex;align-items:center;gap:8px;flex-shrink:0;";
     var totalBadge = document.createElement("span");
     totalBadge.className = "mono";
-    totalBadge.style.cssText = "font-size:.8rem;font-weight:600;color:var(--dark);";
+    totalBadge.style.cssText = "font-size:.8rem;font-weight:600;color:var(--amber);";
     var chevron = document.createElement("span");
     chevron.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
     chevron.style.cssText = "color:var(--muted);display:flex;transition:transform .15s;" + (expandido ? "transform:rotate(180deg);" : "");
@@ -2099,14 +1561,12 @@
 
     if(!expandido) return card;
 
-    // ---- detalle (solo si está expandida) ----
     var detalle = document.createElement("div");
     detalle.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid var(--border);";
     card.appendChild(detalle);
 
-    // operador a cargo
     var operadorSelect = document.createElement("select");
-    operadorSelect.style.cssText = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;margin-bottom:8px;background:#fff;color:var(--text);";
+    operadorSelect.style.cssText = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;margin-bottom:8px;background:var(--panel-alt);color:var(--text);";
     var optSinOperador = document.createElement("option");
     optSinOperador.value = "";
     optSinOperador.textContent = "Sin operador asignado";
@@ -2124,12 +1584,11 @@
     });
     detalle.appendChild(operadorSelect);
 
-    // motivo de parada (texto libre, opcional)
     var motivoInput = document.createElement("input");
     motivoInput.type = "text";
     motivoInput.placeholder = "Motivo si está detenida (opcional)";
     motivoInput.value = t.motivoParada || "";
-    motivoInput.style.cssText = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;margin-bottom:8px;";
+    motivoInput.style.cssText = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;margin-bottom:8px;background:var(--panel-alt);color:var(--text);";
     motivoInput.addEventListener("input", function(){
       t.motivoParada = motivoInput.value.trim();
       guardarTurno();
@@ -2137,7 +1596,6 @@
     });
     detalle.appendChild(motivoInput);
 
-    // ---- OP: editable mientras no tenga OP asignada; bloqueada una vez seteada ----
     var opContainer = document.createElement("div");
     detalle.appendChild(opContainer);
 
@@ -2152,7 +1610,7 @@
       box.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:6px;background:var(--panel-alt);border:1px solid var(--border-input);";
       var txt = document.createElement("span");
       txt.className = "mono";
-      txt.style.cssText = "font-weight:600;font-size:.85rem;";
+      txt.style.cssText = "font-weight:600;font-size:.85rem;color:var(--amber-text);";
       txt.textContent = t.op;
       var btnQuitar = document.createElement("button");
       btnQuitar.type = "button";
@@ -2179,7 +1637,7 @@
       opFieldInput.className = "mono";
       opFieldInput.placeholder = "OP asignada";
       opFieldInput.value = "";
-      opFieldInput.style.cssText = "width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;";
+      opFieldInput.style.cssText = "width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;background:var(--panel-alt);color:var(--text);";
       var sugBox = document.createElement("div");
       sugBox.className = "suggest-box hidden";
       opWrap.appendChild(opFieldInput);
@@ -2255,7 +1713,6 @@
     actualizarMermaResumen();
     detalle.appendChild(mermaResumen);
 
-    // registrar producción
     var registrarWrap = document.createElement("div");
     registrarWrap.style.cssText = "display:flex;gap:8px;";
 
@@ -2264,16 +1721,16 @@
     cantInput.min = "0";
     cantInput.className = "mono";
     cantInput.placeholder = "Cant. producida";
-    cantInput.style.cssText = "flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;";
+    cantInput.style.cssText = "flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;background:var(--panel-alt);color:var(--text);";
     var mermaInput = document.createElement("input");
     mermaInput.type = "number";
     mermaInput.min = "0";
     mermaInput.className = "mono";
     mermaInput.placeholder = "Merma";
-    mermaInput.style.cssText = "width:80px;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;";
+    mermaInput.style.cssText = "width:80px;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;background:var(--panel-alt);color:var(--text);";
     var btnAdd = document.createElement("button");
     btnAdd.textContent = "+";
-    btnAdd.style.cssText = "background:var(--dark);color:#fff;border:none;padding:0 16px;border-radius:6px;font-size:1rem;font-weight:500;cursor:pointer;white-space:nowrap;";
+    btnAdd.style.cssText = "background:var(--amber);color:#12161F;border:none;padding:0 16px;border-radius:6px;font-size:1rem;font-weight:700;cursor:pointer;white-space:nowrap;";
 
     var detalleRegistros = document.createElement("div");
 
@@ -2286,12 +1743,12 @@
         var f = new Date(r.fecha);
         var fTxt = f.toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit"}) + " " + f.toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"});
         var span = document.createElement("span");
-        span.textContent = fTxt;
+        span.textContent = fTxt + (r.op ? " (" + r.op + ")" : "");
         var wrapDer = document.createElement("span");
         wrapDer.style.cssText = "display:flex;align-items:center;";
         var spanCant = document.createElement("span");
         spanCant.className = "mono";
-        spanCant.style.color = "var(--dark)";
+        spanCant.style.color = "var(--amber)";
         spanCant.textContent = "+" + r.cantidad + " u" + (r.merma ? " (merma " + r.merma + ")" : "");
         var btnDelReg = document.createElement("button");
         btnDelReg.style.cssText = "background:none;border:none;color:var(--red);cursor:pointer;padding:0 0 0 8px;";
@@ -2323,8 +1780,15 @@
       var merma = parseInt(mermaInput.value,10);
       if(isNaN(merma) || merma < 0) merma = 0;
       if(!cantInput.value || isNaN(cantidad) || cantidad <= 0){ mostrarToast("error","Ingresa una cantidad válida"); return; }
+      
+      var currentOp = t.op || "";
+      var match = buscarEnCatalogo(currentOp);
+      var descMatch = match ? match.descripcion : "";
+
       t.registros.unshift({
         id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
+        op: currentOp,
+        descripcion: descMatch,
         cantidad: cantidad,
         merma: merma,
         fecha: new Date().toISOString()
@@ -2424,25 +1888,25 @@
       var f = new Date(h.fecha);
       var fTxt = f.toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"}) + " " + f.toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"});
       var item = document.createElement("div");
-      item.style.cssText = "border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;";
+      item.style.cssText = "border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:var(--panel-alt);";
       var header = document.createElement("div");
       header.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;";
       var fecha = document.createElement("span");
       fecha.className = "mono";
-      fecha.style.cssText = "font-size:.78rem;font-weight:600;color:var(--dark);";
+      fecha.style.cssText = "font-size:.78rem;font-weight:600;color:var(--text);";
       fecha.textContent = fTxt;
       var acciones = document.createElement("div");
       acciones.style.cssText = "display:flex;gap:6px;";
       var btnCopiar = document.createElement("button");
       btnCopiar.textContent = "Copiar";
-      btnCopiar.style.cssText = "background:var(--dark);color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:.7rem;cursor:pointer;";
+      btnCopiar.style.cssText = "background:var(--amber);color:#12161F;border:none;padding:4px 10px;border-radius:5px;font-size:.7rem;font-weight:600;cursor:pointer;";
       btnCopiar.addEventListener("click", function(){
         var ok = copiarTexto(h.resumen);
         mostrarToast(ok ? "ok" : "error", ok ? "Copiado" : "No se pudo copiar");
       });
       var btnExcel = document.createElement("button");
       btnExcel.textContent = "Excel";
-      btnExcel.style.cssText = "background:#1F7A45;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:.7rem;cursor:pointer;";
+      btnExcel.style.cssText = "background:#1F7A45;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:.7rem;font-weight:600;cursor:pointer;";
       btnExcel.addEventListener("click", function(){
         if(!h.filas || h.filas.length === 0){ mostrarToast("error","Este turno no tiene filas guardadas"); return; }
         var wb = construirLibroTurno(h.filas, "PRODUCCION TURNO " + fTxt);
@@ -2462,7 +1926,7 @@
       header.appendChild(fecha);
       header.appendChild(acciones);
       var texto = document.createElement("pre");
-      texto.style.cssText = "white-space:pre-wrap;font-family:'IBM Plex Sans',sans-serif;font-size:.75rem;color:var(--muted);margin:0;max-height:120px;overflow-y:auto;";
+      texto.style.cssText = "white-space:pre-wrap;font-family:'IBM Plex Sans',sans-serif;font-size:.75rem;color:var(--muted-2);margin:0;max-height:120px;overflow-y:auto;";
       texto.textContent = h.resumen;
       item.appendChild(header);
       item.appendChild(texto);
@@ -2514,7 +1978,7 @@
     mostrarToast("ok","Turno restaurado");
   });
 
-  // ---------- reporte de producción/turno a WhatsApp ----------
+  // ---------- reporte WhatsApp ----------
   function generarReporteProduccion(){
     var fecha = new Date().toLocaleString("es-PE", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
     var activas = ordenarPorNombre(maquinas.filter(function(m){ return m.activa; }));
@@ -2532,10 +1996,11 @@
         l.push("• " + m.nombre + ": ⏸ " + t.motivoParada);
         return;
       }
+      var totalMaq = totalProducido(t);
       var match = buscarEnCatalogo(t.op);
       var opTxt = t.op ? t.op : "sin OP asignada";
       var descTxt = match && match.descripcion ? " — " + match.descripcion : "";
-      l.push("• " + m.nombre + ": " + opTxt + descTxt);
+      l.push("• " + m.nombre + ": " + opTxt + descTxt + " (" + totalMaq + " u)");
     });
     return l.join("\n");
   }
@@ -2588,7 +2053,6 @@
 
     window.addEventListener("load", function(){
       navigator.serviceWorker.register("sw.js").then(function(reg){
-        // si hay una versión nueva instalada y esperando, actívala ya
         if(reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
 
         reg.addEventListener("updatefound", function(){
@@ -2601,11 +2065,10 @@
           });
         });
 
-        // revisa si hay actualización cada vez que la app vuelve a primer plano
         document.addEventListener("visibilitychange", function(){
           if(document.visibilityState === "visible") reg.update();
         });
-      }).catch(function(){ /* no crítico si falla */ });
+      }).catch(function(){ });
     });
   }
 })();

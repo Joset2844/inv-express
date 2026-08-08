@@ -1512,62 +1512,20 @@
     opFieldInput.addEventListener("focus", renderSugerencias);
     opFieldInput.addEventListener("blur", function(){ setTimeout(function(){ sugBox.classList.add("hidden"); }, 150); });
 
-    // meta manual (escrita por el usuario, no viene del catálogo)
-    var metaWrap = document.createElement("div");
-    metaWrap.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px;";
-    var metaLabel = document.createElement("span");
-    metaLabel.style.cssText = "font-size:.72rem;color:var(--muted);white-space:nowrap;";
-    metaLabel.textContent = "Meta:";
-    var metaInput = document.createElement("input");
-    metaInput.type = "number";
-    metaInput.min = "0";
-    metaInput.className = "mono";
-    metaInput.placeholder = "Cantidad objetivo (opcional)";
-    metaInput.value = t.objetivo != null ? t.objetivo : "";
-    metaInput.style.cssText = "flex:1;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;";
-    metaWrap.appendChild(metaLabel);
-    metaWrap.appendChild(metaInput);
-    card.appendChild(metaWrap);
+    var mermaResumen = document.createElement("div");
+    mermaResumen.style.cssText = "font-size:.72rem;color:var(--red);margin-bottom:8px;min-height:14px;";
 
-    var metaTxt = document.createElement("div");
-    metaTxt.className = "item-meta";
-    card.appendChild(metaTxt);
-
-    var track = document.createElement("div");
-    track.className = "progress-track";
-    var fill = document.createElement("div");
-    fill.className = "progress-fill";
-    track.appendChild(fill);
-    card.appendChild(track);
-
-    function actualizarProgreso(){
-      var producido = totalProducido(t);
-      var objetivo = t.objetivo;
-      if(objetivo){
-        var pct = Math.min(100, Math.round((producido/objetivo)*100));
-        var completado = producido >= objetivo;
-        metaTxt.innerHTML = '<strong style="color:var(--dark);">'+producido+'</strong> / '+objetivo+' u ('+pct+'%)' +
-          (completado ? ' <span class="badge-completado">Completado</span>' : '');
-        track.style.display = "";
-        fill.style.width = pct + "%";
-        fill.style.background = completado ? "var(--green)" : (pct >= 50 ? "var(--amber)" : "var(--red)");
-      } else {
-        metaTxt.innerHTML = '<strong style="color:var(--dark);">'+producido+'</strong> u producidas <span style="color:var(--muted-2);">(sin meta definida)</span>';
-        track.style.display = "none";
-      }
+    function actualizarMermaResumen(){
+      var merma = totalMerma(t);
+      mermaResumen.textContent = merma > 0 ? "Merma acumulada: " + merma + " u" : "";
     }
-    actualizarProgreso();
-
-    metaInput.addEventListener("input", function(){
-      var v = parseInt(metaInput.value,10);
-      t.objetivo = (metaInput.value.trim() && !isNaN(v) && v > 0) ? v : null;
-      guardarTurno();
-      actualizarProgreso();
-    });
+    actualizarMermaResumen();
+    card.appendChild(mermaResumen);
 
     // registrar producción
     var registrarWrap = document.createElement("div");
-    registrarWrap.style.cssText = "display:flex;gap:8px;margin-top:8px;";
+    registrarWrap.style.cssText = "display:flex;gap:8px;";
+
     var cantInput = document.createElement("input");
     cantInput.type = "number";
     cantInput.min = "0";
@@ -1583,15 +1541,6 @@
     var btnAdd = document.createElement("button");
     btnAdd.textContent = "+";
     btnAdd.style.cssText = "background:var(--dark);color:#fff;border:none;padding:0 16px;border-radius:6px;font-size:1rem;font-weight:500;cursor:pointer;white-space:nowrap;";
-
-    var mermaResumen = document.createElement("div");
-    mermaResumen.style.cssText = "font-size:.72rem;color:var(--red);margin-top:4px;min-height:14px;";
-
-    function actualizarMermaResumen(){
-      var merma = totalMerma(t);
-      mermaResumen.textContent = merma > 0 ? "Merma acumulada: " + merma + " u" : "";
-    }
-    actualizarMermaResumen();
 
     var detalleContainer = document.createElement("div");
 
@@ -1617,7 +1566,7 @@
         btnDelReg.addEventListener("click", function(){
           t.registros = t.registros.filter(function(x){ return x.id !== r.id; });
           guardarTurno();
-          actualizarProgreso();
+          actualizarMermaResumen();
           actualizarMermaResumen();
           renderRegistros();
         });
@@ -1650,7 +1599,7 @@
       guardarTurno();
       cantInput.value = "";
       mermaInput.value = "";
-      actualizarProgreso();
+      actualizarMermaResumen();
       actualizarMermaResumen();
       renderRegistros();
       mostrarToast("ok","Producción registrada");

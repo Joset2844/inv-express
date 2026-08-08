@@ -347,10 +347,11 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
       Nueva máquina
     </h2>
-    <div style="display:flex;gap:8px;">
-      <input type="text" id="nombreMaquinaInput" placeholder="Ej. Troqueladora 1" style="flex:1;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;" />
-      <button id="btnAgregarMaquina" style="background:var(--dark);color:#fff;border:none;padding:0 16px;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;white-space:nowrap;">Agregar</button>
+    <div style="display:flex;gap:8px;align-items:flex-end;">
+      <textarea id="nombreMaquinaInput" placeholder="Ej. Troqueladora 1, Troqueladora 2&#10;(o una por línea)" rows="1" style="flex:1;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;resize:vertical;font-family:inherit;"></textarea>
+      <button id="btnAgregarMaquina" style="background:var(--dark);color:#fff;border:none;padding:9px 16px;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;white-space:nowrap;">Agregar</button>
     </div>
+    <p style="font-size:.72rem;color:var(--muted-2);margin:6px 0 0;">Puedes agregar varias separadas por coma o una por línea.</p>
   </div>
 
   <div class="list-header">
@@ -482,10 +483,11 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
       Nuevo operador
     </h2>
-    <div style="display:flex;gap:8px;">
-      <input type="text" id="nombreOperadorInput" placeholder="Nombre del operador" style="flex:1;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;" />
-      <button id="btnAgregarOperador" style="background:var(--dark);color:#fff;border:none;padding:0 16px;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;white-space:nowrap;">Agregar</button>
+    <div style="display:flex;gap:8px;align-items:flex-end;">
+      <textarea id="nombreOperadorInput" placeholder="Ej. Juan Pérez, María López&#10;(o uno por línea)" rows="1" style="flex:1;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;resize:vertical;font-family:inherit;"></textarea>
+      <button id="btnAgregarOperador" style="background:var(--dark);color:#fff;border:none;padding:9px 16px;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;white-space:nowrap;">Agregar</button>
     </div>
+    <p style="font-size:.72rem;color:var(--muted-2);margin:6px 0 0;">Puedes agregar varios separados por coma o uno por línea.</p>
   </div>
   <div class="list-header">
     <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--dark);">
@@ -1210,20 +1212,19 @@
       emptyMaquinas = $("emptyMaquinas"), totalMaquinasEl = $("totalMaquinas");
 
   $("btnAgregarMaquina").addEventListener("click", function(){
-    var nombre = nombreMaquinaInput.value.trim();
-    if(!nombre){ mostrarToast("error","Ponle un nombre a la máquina"); return; }
-    maquinas.unshift({
-      id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
-      nombre: nombre,
-      activa: false
+    var nombres = nombreMaquinaInput.value.split(/[\n,]+/).map(function(n){ return n.trim(); }).filter(Boolean);
+    if(nombres.length === 0){ mostrarToast("error","Ponle un nombre a la máquina"); return; }
+    nombres.forEach(function(nombre){
+      maquinas.unshift({
+        id: Date.now()+"-"+Math.random().toString(36).slice(2,7)+"-"+Math.random().toString(36).slice(2,5),
+        nombre: nombre,
+        activa: false
+      });
     });
     guardarMaquinas();
     nombreMaquinaInput.value = "";
     renderMaquinas();
-    mostrarToast("ok","Máquina agregada");
-  });
-  nombreMaquinaInput.addEventListener("keydown", function(e){
-    if(e.key === "Enter") $("btnAgregarMaquina").click();
+    mostrarToast("ok", nombres.length > 1 ? nombres.length + " máquinas agregadas" : "Máquina agregada");
   });
 
   // ---------- operadores (lista simple) ----------
@@ -1259,19 +1260,18 @@
   }
 
   $("btnAgregarOperador").addEventListener("click", function(){
-    var nombre = nombreOperadorInput.value.trim();
-    if(!nombre){ mostrarToast("error","Ponle un nombre al operador"); return; }
-    operadores.unshift({
-      id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
-      nombre: nombre
+    var nombres = nombreOperadorInput.value.split(/[\n,]+/).map(function(n){ return n.trim(); }).filter(Boolean);
+    if(nombres.length === 0){ mostrarToast("error","Ponle un nombre al operador"); return; }
+    nombres.forEach(function(nombre){
+      operadores.unshift({
+        id: Date.now()+"-"+Math.random().toString(36).slice(2,7)+"-"+Math.random().toString(36).slice(2,5),
+        nombre: nombre
+      });
     });
     guardarOperadores();
     nombreOperadorInput.value = "";
     renderOperadores();
-    mostrarToast("ok","Operador agregado");
-  });
-  nombreOperadorInput.addEventListener("keydown", function(e){
-    if(e.key === "Enter") $("btnAgregarOperador").click();
+    mostrarToast("ok", nombres.length > 1 ? nombres.length + " operadores agregados" : "Operador agregado");
   });
 
   function buscarEnCatalogo(op){

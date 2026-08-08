@@ -48,20 +48,20 @@
   .wrap{max-width:900px;margin:0 auto;padding:0 16px;}
 
   header{position:sticky;top:0;z-index:30;background:var(--dark);border-bottom:3px solid var(--amber);}
-  .header-top{display:flex;align-items:center;justify-content:space-between;padding:8px 0;}
+  .header-top{display:flex;align-items:center;justify-content:space-between;padding:6px 0;}
   .brand{display:flex;align-items:center;gap:8px;}
-  .brand-icon{width:26px;height:26px;border-radius:5px;background:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .brand-icon svg{width:15px;height:15px;}
-  .brand h1{color:#fff;margin:0;font-size:.98rem;font-weight:600;line-height:1;}
+  .brand-icon{width:20px;height:20px;border-radius:5px;background:var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .brand-icon svg{width:13px;height:13px;}
+  .brand h1{color:#fff;margin:0;font-size:.85rem;font-weight:600;line-height:1;}
   .brand p{display:none;}
-  .btn-import{display:flex;align-items:center;gap:6px;background:var(--dark-2);color:#E7EAF0;border:none;padding:7px 11px;border-radius:6px;font-size:.78rem;font-weight:500;cursor:pointer;}
+  .btn-import{display:flex;align-items:center;gap:6px;background:var(--dark-2);color:#E7EAF0;border:none;padding:6px 10px;border-radius:6px;font-size:.73rem;font-weight:500;cursor:pointer;}
   .btn-import:active{background:var(--dark-3);}
 
-  .tabs{display:flex;gap:2px;flex-wrap:wrap;}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:6px;}
   .tab-btn{flex:1 1 auto;justify-content:center;}
-  .tab-btn{display:flex;align-items:center;gap:5px;background:none;border:none;color:var(--muted-2);padding:7px 12px;font-size:.74rem;font-weight:500;border-bottom:2px solid transparent;cursor:pointer;font-family:'Oswald',sans-serif;letter-spacing:.02em;text-transform:uppercase;}
-  .tab-btn svg{width:13px;height:13px;}
-  .tab-btn.active{color:var(--amber);border-color:var(--amber);}
+  .tab-btn{display:flex;align-items:center;gap:5px;background:var(--dark-2);border:none;color:var(--muted-2);padding:6px 10px;border-radius:16px;font-size:.68rem;font-weight:500;cursor:pointer;font-family:'Oswald',sans-serif;letter-spacing:.02em;text-transform:uppercase;}
+  .tab-btn svg{width:12px;height:12px;}
+  .tab-btn.active{color:#1F2532;background:var(--amber);}
 
   main{padding:16px 0 20px;}
 
@@ -167,15 +167,11 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1F2532" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
       </div>
       <div>
-        <h1>Control de Inventario</h1>
-        <p id="counts">0 OP en catálogo · 0 en lista</p>
-      </div>
+      <h1>Supervisión de Planta</h1>
+      <p id="counts">0 OP en catálogo · 0 en lista</p>
+    </div>
     </div>
     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden" />
-    <button class="btn-import" id="btnImport">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <span>Importar catálogo</span>
-    </button>
   </div>
   <div class="wrap tabs" id="mainTabs">
     <button class="tab-btn active" data-maintab="inventario">
@@ -189,6 +185,10 @@
     <button class="tab-btn" data-maintab="produccion">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
       Producción
+    </button>
+    <button class="tab-btn" data-maintab="resumen">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6h-2"/><path d="M13 3v6h6M9 13h6M9 17h6M9 9h1"/></svg>
+      Resumen
     </button>
     <button class="tab-btn" data-maintab="operadores">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -210,6 +210,14 @@
 <main class="wrap">
 
 <div id="tabInventario">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">
+    <span id="countsInventario" style="font-size:.78rem;color:var(--muted);">0 OP en catálogo · 0 en lista</span>
+    <button class="btn-import" id="btnImport" style="background:var(--dark);color:#fff;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span>Importar catálogo</span>
+    </button>
+  </div>
 
   <div class="empty-catalog hidden" id="emptyCatalog">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2" style="margin:0 auto 6px;display:block;"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
@@ -479,6 +487,21 @@
 
 </div><!-- /tabProduccion -->
 
+<div id="tabResumen" class="hidden">
+  <div class="list-header">
+    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--dark);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6h-2"/><path d="M13 3v6h6M9 13h6M9 17h6M9 9h1"/></svg>
+      Resumen de producción
+    </h2>
+    <button class="btn-clear" id="btnExportarResumenExcel" style="color:var(--dark-3);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Exportar Excel
+    </button>
+  </div>
+  <div id="emptyResumen" class="empty-list hidden">No hay máquinas activas con producción.</div>
+  <div id="resumenContainer"></div>
+</div><!-- /tabResumen -->
+
 <div id="tabOperadores" class="hidden">
   <div class="panel" style="margin-bottom:18px;">
     <h2>
@@ -688,7 +711,7 @@
       observacionInput = $("observacionInput"),
       unidadesInput = $("unidadesInput"), cajasInput = $("cajasInput"),
       totalForm = $("totalForm"), suggestBox = $("suggestBox"), fieldOp = $("fieldOp"),
-      checkIcon = $("checkIcon"), counts = $("counts"), footerInfo = $("footerInfo"),
+      checkIcon = $("checkIcon"), counts = $("counts"), countsInventario = $("countsInventario"), footerInfo = $("footerInfo"),
       btnExportar = $("btnExportar"), emptyCatalog = $("emptyCatalog"),
       listaContainer = $("listaContainer"), odometer = $("odometer"),
       btnVaciar = $("btnVaciar"), buscarInput = $("buscarInput"),
@@ -714,7 +737,7 @@
 
   // ---------- pestañas principales (Inventario / Máquinas / Producción / Operadores) ----------
   var subTabsInventario = $("subTabsInventario"), tabInventario = $("tabInventario"),
-      tabMaquinas = $("tabMaquinas"), tabProduccion = $("tabProduccion"), tabOperadores = $("tabOperadores"),
+      tabMaquinas = $("tabMaquinas"), tabProduccion = $("tabProduccion"), tabResumen = $("tabResumen"), tabOperadores = $("tabOperadores"),
       bottombarInventario = $("bottombarInventario"),
       bottombarProduccion = $("bottombarProduccion");
 
@@ -726,12 +749,14 @@
       tabInventario.classList.toggle("hidden", tab !== "inventario");
       tabMaquinas.classList.toggle("hidden", tab !== "maquinas");
       tabProduccion.classList.toggle("hidden", tab !== "produccion");
+      tabResumen.classList.toggle("hidden", tab !== "resumen");
       tabOperadores.classList.toggle("hidden", tab !== "operadores");
       subTabsInventario.classList.toggle("hidden", tab !== "inventario");
       bottombarInventario.classList.toggle("hidden", tab !== "inventario");
       bottombarProduccion.classList.toggle("hidden", tab !== "produccion");
       if(tab === "maquinas") renderMaquinas();
       if(tab === "produccion") renderProduccion();
+      if(tab === "resumen") renderResumen();
       if(tab === "operadores") renderOperadores();
     });
   });
@@ -1205,6 +1230,51 @@
     var fechaTxt = new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
     var wb = construirLibroTurno(filas, "PRODUCCION TURNO " + fechaTxt);
     var nombre = "turno_" + new Date().toISOString().slice(0,10) + ".xlsx";
+    try{ exportarLibroComoArchivo(wb, nombre); }
+    catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
+  });
+
+  // ---------- resumen de producción (estilo planilla de planta: MAQUINA / OP'S / PRODUCTO / TOTAL / OBSERVACIONES) ----------
+  var resumenContainer = $("resumenContainer"), emptyResumen = $("emptyResumen");
+
+  function construirLibroResumen(filas, titulo){
+    var aoa = [[titulo], ["MAQUINA","OP'S","PRODUCTO","TOTAL PRODUCCION","OBSERVACIONES"]];
+    var sumaTotal = 0;
+    filas.forEach(function(f){
+      aoa.push([f.maquina, f.op, f.producto, f.total, f.observaciones]);
+      sumaTotal += f.total;
+    });
+    aoa.push(["", "", "TOTAL", sumaTotal, ""]);
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:4} }];
+    ws["!cols"] = [{wch:16},{wch:14},{wch:40},{wch:16},{wch:30}];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Resumen");
+    return wb;
+  }
+
+  function renderResumen(){
+    resumenContainer.innerHTML = "";
+    var filas = filasTurnoParaExcel();
+    emptyResumen.classList.toggle("hidden", filas.length > 0);
+    if(filas.length === 0) return;
+
+    var sumaTotal = filas.reduce(function(acc,f){ return acc + f.total; }, 0);
+    var html = '<div class="table-wrap"><table><thead><tr><th>Máquina</th><th>OP</th><th>Producto</th><th>Total</th><th>Observaciones</th></tr></thead><tbody>';
+    filas.forEach(function(f){
+      html += '<tr><td class="mono" style="font-weight:600;">'+escapeHtml(f.maquina)+'</td><td class="mono">'+(f.op ? escapeHtml(f.op) : "—")+'</td><td>'+(f.producto ? escapeHtml(f.producto) : "—")+'</td><td class="mono" style="font-weight:600;">'+f.total+'</td><td style="color:var(--muted);">'+(f.observaciones ? escapeHtml(f.observaciones) : "—")+'</td></tr>';
+    });
+    html += '<tr style="background:var(--panel-alt);"><td colspan="3" class="mono" style="font-weight:700;">TOTAL</td><td class="mono" style="font-weight:700;">'+sumaTotal+'</td><td></td></tr>';
+    html += '</tbody></table></div>';
+    resumenContainer.innerHTML = html;
+  }
+
+  $("btnExportarResumenExcel").addEventListener("click", function(){
+    var filas = filasTurnoParaExcel();
+    if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para exportar"); return; }
+    var fechaTxt = new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
+    var wb = construirLibroResumen(filas, "PRODUCCION TURNO DIA " + fechaTxt);
+    var nombre = "resumen_turno_" + new Date().toISOString().slice(0,10) + ".xlsx";
     try{ exportarLibroComoArchivo(wb, nombre); }
     catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
   });
@@ -1931,6 +2001,7 @@
   // ---------- contadores ----------
   function actualizarContadores(){
     counts.textContent = catalogo.length + " OP en catálogo · " + lista.length + " en lista";
+    countsInventario.textContent = catalogo.length + " OP en catálogo · " + lista.length + " en lista";
     var totalUnidades = lista.reduce(function(acc,i){ return acc + i.totalUnidades; }, 0);
     footerInfo.textContent = lista.length + " pieza(s) · " + totalUnidades + " unidades totales";
     btnExportar.disabled = lista.length === 0;

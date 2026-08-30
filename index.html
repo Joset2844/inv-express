@@ -179,22 +179,6 @@
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
       Inventario
     </button>
-    <button class="tab-btn" data-maintab="maquinas">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M4 9h2M4 15h2M18 9h2M18 15h2M9 4v2M15 4v2M9 18v2M15 18v2"/></svg>
-      Máquinas
-    </button>
-    <button class="tab-btn" data-maintab="produccion">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-      Producción
-    </button>
-    <button class="tab-btn" data-maintab="resumen">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6h-2"/><path d="M13 3v6h6M9 13h6M9 17h6M9 9h1"/></svg>
-      Resumen
-    </button>
-    <button class="tab-btn" data-maintab="operadores">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Operadores
-    </button>
   </div>
   <div class="wrap tabs" id="subTabsInventario">
     <button class="tab-btn active" data-tab="agregar">
@@ -351,180 +335,6 @@
 
 </div><!-- /tabInventario -->
 
-<div id="tabMaquinas" class="tab-page hidden">
-
-  <div class="panel" style="margin-bottom:18px;">
-    <h2>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
-      Nueva máquina
-    </h2>
-    <div style="display:flex;gap:8px;align-items:flex-end;">
-      <textarea id="nombreMaquinaInput" placeholder="Ej. Troqueladora 1, Troqueladora 2&#10;(o una por línea)" rows="1" style="flex:1;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;resize:vertical;font-family:inherit;"></textarea>
-      <button id="btnAgregarMaquina" style="background:var(--amber);color:#12161F;border:none;padding:9px 16px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">Agregar</button>
-    </div>
-    <p style="font-size:.72rem;color:var(--muted-2);margin:6px 0 0;">Puedes agregar varias separadas por coma o una por línea.</p>
-  </div>
-
-  <div class="list-header">
-    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--text);">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
-      Máquinas (<span id="totalMaquinas">0</span>)
-    </h2>
-    <div style="display:flex;gap:12px;align-items:center;">
-      <button class="btn-clear" id="btnRespaldarMaquinas" style="color:var(--muted-2);">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        Respaldar
-      </button>
-      <button class="btn-clear" id="btnRestaurarMaquinas" style="color:var(--muted-2);">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
-        Restaurar
-      </button>
-    </div>
-  </div>
-
-  <div class="hidden" id="panelRespaldoMaquinas" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
-    <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Selecciona todo el texto de abajo y cópialo. Guárdalo en Notas o mándatelo por WhatsApp para no perderlo.</p>
-    <textarea id="textoRespaldoMaquinas" readonly style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button id="btnCopiarRespaldoMaquinas" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Copiar al portapapeles</button>
-      <button id="btnCerrarRespaldoMaquinas" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
-    </div>
-  </div>
-
-  <div class="hidden" id="panelRestaurarMaquinas" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
-    <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Pega aquí el texto que copiaste con "Respaldar".</p>
-    <textarea id="textoRestaurarMaquinas" placeholder="Pega aquí el texto de respaldo…" style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button id="btnConfirmarRestaurarMaquinas" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Restaurar máquinas</button>
-      <button id="btnCerrarRestaurarMaquinas" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
-    </div>
-  </div>
-
-  <p style="font-size:.78rem;color:var(--muted);margin:0 0 12px;">Actívalas aquí para que aparezcan en la pestaña <strong>Producción</strong> y puedas asignarles una OP.</p>
-
-  <div id="emptyMaquinas" class="empty-list hidden">Aún no agregas máquinas.</div>
-  <div id="maquinasContainer"></div>
-
-</div><!-- /tabMaquinas -->
-
-<div id="tabProduccion" class="tab-page hidden">
-
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <div style="font-size:.85rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-      Turno actual
-    </div>
-    <div style="display:flex;gap:10px;">
-      <button class="btn-clear" id="btnHistorial" style="color:var(--muted-2);">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
-        Historial
-      </button>
-      <button class="btn-clear" id="btnReiniciarTurno" style="color:var(--red);">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><polyline points="3 4 3 10 9 10"/></svg>
-        Reiniciar turno
-      </button>
-    </div>
-  </div>
-
-  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-    <button class="btn-clear" id="btnGuardarPlantilla" style="color:var(--muted-2);">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
-      Guardar plantilla
-    </button>
-    <button class="btn-clear" id="btnUsarPlantilla" style="color:var(--muted-2);">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
-      Usar plantilla
-    </button>
-    <button class="btn-clear" id="btnExportarTurnoExcel" style="color:var(--muted-2);">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Exportar Excel
-    </button>
-  </div>
-
-  <div class="hidden" id="panelHistorial" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <span style="font-size:.82rem;font-weight:600;color:var(--text);">Turnos anteriores</span>
-      <button id="btnCerrarHistorial" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:5px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;">Cerrar</button>
-    </div>
-    <div id="historialLista" style="max-height:320px;overflow-y:auto;"></div>
-  </div>
-
-  <div class="odometer">
-    <span class="odometer-label">Total producido (turno activo)</span>
-    <div class="odometer-digits" id="odometerProd"></div>
-  </div>
-
-  <div style="display:flex;gap:12px;margin-bottom:6px;">
-    <button class="btn-clear" id="btnRespaldarProd" style="color:var(--muted-2);">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-      Respaldar
-    </button>
-    <button class="btn-clear" id="btnRestaurarProd" style="color:var(--muted-2);">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
-      Restaurar
-    </button>
-  </div>
-
-  <div class="hidden" id="panelRespaldoProd" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
-    <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Selecciona todo el texto de abajo y cópialo. Guárdalo en Notas o mándatelo por WhatsApp para no perderlo.</p>
-    <textarea id="textoRespaldoProd" readonly style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button id="btnCopiarRespaldoProd" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Copiar al portapapeles</button>
-      <button id="btnCerrarRespaldoProd" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
-    </div>
-  </div>
-
-  <div class="hidden" id="panelRestaurarProd" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
-    <p style="font-size:.78rem;color:var(--muted);margin:0 0 8px;">Pega aquí el texto que copiaste con "Respaldar".</p>
-    <textarea id="textoRestaurarProd" placeholder="Pega aquí el texto de respaldo…" style="width:100%;height:110px;font-size:.72rem;font-family:'IBM Plex Mono',monospace;padding:8px;border-radius:6px;border:1px solid var(--border-input);"></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button id="btnConfirmarRestaurarProd" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Restaurar turno</button>
-      <button id="btnCerrarRestaurarProd" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
-    </div>
-  </div>
-
-  <div id="emptyProd" class="empty-list hidden">No hay máquinas activas. Actívalas en la pestaña "Máquinas".</div>
-  <div id="produccionContainer"></div>
-
-</div><!-- /tabProduccion -->
-
-<div id="tabResumen" class="tab-page hidden">
-  <div class="list-header">
-    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--text);">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6h-2"/><path d="M13 3v6h6M9 13h6M9 17h6M9 9h1"/></svg>
-      Resumen de producción
-    </h2>
-    <button class="btn-clear" id="btnExportarResumenExcel" style="color:var(--muted-2);">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Exportar Excel
-    </button>
-  </div>
-  <div id="emptyResumen" class="empty-list hidden">No hay máquinas activas con producción.</div>
-  <div id="resumenContainer"></div>
-</div><!-- /tabResumen -->
-
-<div id="tabOperadores" class="tab-page hidden">
-  <div class="panel" style="margin-bottom:18px;">
-    <h2>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
-      Nuevo operador
-    </h2>
-    <div style="display:flex;gap:8px;align-items:flex-end;">
-      <textarea id="nombreOperadorInput" placeholder="Ej. Juan Pérez, María López&#10;(o uno por línea)" rows="1" style="flex:1;padding:9px 11px;border-radius:6px;border:1px solid var(--border-input);font-size:.9rem;outline:none;resize:vertical;font-family:inherit;"></textarea>
-      <button id="btnAgregarOperador" style="background:var(--amber);color:#12161F;border:none;padding:9px 16px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">Agregar</button>
-    </div>
-    <p style="font-size:.72rem;color:var(--muted-2);margin:6px 0 0;">Puedes agregar varios separados por coma o uno por línea.</p>
-  </div>
-  <div class="list-header">
-    <h2 style="margin:0;font-size:.85rem;display:flex;gap:8px;align-items:center;color:var(--text);">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Operadores (<span id="totalOperadores">0</span>)
-    </h2>
-  </div>
-  <div id="emptyOperadores" class="empty-list hidden">Aún no agregas operadores.</div>
-  <div id="operadoresContainer"></div>
-</div><!-- /tabOperadores -->
-
 </main>
 
 <div class="bottombar">
@@ -535,13 +345,7 @@
       Exportar Excel
     </button>
   </div>
-  <div class="bottombar-inner hidden" id="bottombarProduccion">
-    <button id="btnCopiarReporteProd" style="background:none;border:1px solid var(--border-input);color:#E7EAF0;padding:9px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;">Copiar texto</button>
-    <button class="btn-export" id="btnReportarWhatsappProd" style="background:#25D366;color:#0B2E13;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2z"/></svg>
-      Reportar WhatsApp
-    </button>
-  </div>
+
 </div>
 
 <div id="toastContainer"></div>
@@ -736,9 +540,7 @@
 
   // ---------- pestañas principales ----------
   var subTabsInventario = $("subTabsInventario"), tabInventario = $("tabInventario"),
-      tabMaquinas = $("tabMaquinas"), tabProduccion = $("tabProduccion"), tabResumen = $("tabResumen"), tabOperadores = $("tabOperadores"),
-      bottombarInventario = $("bottombarInventario"),
-      bottombarProduccion = $("bottombarProduccion");
+      bottombarInventario = $("bottombarInventario");
 
   document.querySelectorAll("#mainTabs .tab-btn").forEach(function(btn){
     btn.addEventListener("click", function(){
@@ -746,17 +548,8 @@
       btn.classList.add("active");
       var tab = btn.dataset.maintab;
       tabInventario.classList.toggle("hidden", tab !== "inventario");
-      tabMaquinas.classList.toggle("hidden", tab !== "maquinas");
-      tabProduccion.classList.toggle("hidden", tab !== "produccion");
-      tabResumen.classList.toggle("hidden", tab !== "resumen");
-      tabOperadores.classList.toggle("hidden", tab !== "operadores");
       subTabsInventario.classList.toggle("hidden", tab !== "inventario");
       bottombarInventario.classList.toggle("hidden", tab !== "inventario");
-      bottombarProduccion.classList.toggle("hidden", tab !== "produccion");
-      if(tab === "maquinas") renderMaquinas();
-      if(tab === "produccion") renderProduccion();
-      if(tab === "resumen") renderResumen();
-      if(tab === "operadores") renderOperadores();
     });
   });
 
@@ -2040,8 +1833,6 @@
   renderLista();
   actualizarContadores();
   renderConsulta();
-  renderMaquinas();
-  renderProduccion();
 
   if("serviceWorker" in navigator){
     var yaRecargo = false;

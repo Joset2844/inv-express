@@ -1262,16 +1262,17 @@
   var resumenContainer = $("resumenContainer"), emptyResumen = $("emptyResumen");
 
   function construirLibroResumen(filas, titulo){
-    var aoa = [[titulo], ["MAQUINA","OP'S","PRODUCTO","TOTAL PRODUCCION","OBSERVACIONES"]];
-    var sumaTotal = 0;
+    var aoa = [[titulo], ["MAQUINA","OP'S","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]];
+    var sumaTotal = 0, sumaMerma = 0;
     filas.forEach(function(f){
-      aoa.push([f.maquina, f.op, f.producto, f.total, f.observaciones]);
+      aoa.push([f.maquina, f.op, f.producto, f.total, f.merma || 0, f.observaciones]);
       sumaTotal += f.total;
+      sumaMerma += (f.merma || 0);
     });
-    aoa.push(["", "", "TOTAL", sumaTotal, ""]);
+    aoa.push(["", "", "TOTAL", sumaTotal, sumaMerma, ""]);
     var ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:4} }];
-    ws["!cols"] = [{wch:16},{wch:14},{wch:40},{wch:16},{wch:30}];
+    ws["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:5} }];
+    ws["!cols"] = [{wch:16},{wch:14},{wch:40},{wch:16},{wch:10},{wch:30}];
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Resumen");
     return wb;
@@ -1284,11 +1285,12 @@
     if(filas.length === 0) return;
 
     var sumaTotal = filas.reduce(function(acc,f){ return acc + f.total; }, 0);
-    var html = '<div class="table-wrap"><table><thead><tr><th>Máquina</th><th>OP</th><th>Producto</th><th>Total</th><th>Observaciones</th></tr></thead><tbody>';
+    var sumaMerma = filas.reduce(function(acc,f){ return acc + (f.merma || 0); }, 0);
+    var html = '<div class="table-wrap"><table><thead><tr><th>Máquina</th><th>OP</th><th>Producto</th><th>Total</th><th>Merma</th><th>Observaciones</th></tr></thead><tbody>';
     filas.forEach(function(f){
-      html += '<tr><td class="mono" style="font-weight:600;color:var(--text);">'+escapeHtml(f.maquina)+'</td><td class="mono" style="color:var(--amber-text);font-weight:600;">'+(f.op ? escapeHtml(f.op) : "—")+'</td><td>'+(f.producto ? escapeHtml(f.producto) : "—")+'</td><td class="mono" style="font-weight:600;color:var(--amber);">'+f.total+'</td><td style="color:var(--muted-2);">'+(f.observaciones ? escapeHtml(f.observaciones) : "—")+'</td></tr>';
+      html += '<tr><td class="mono" style="font-weight:600;color:var(--text);">'+escapeHtml(f.maquina)+'</td><td class="mono" style="color:var(--amber-text);font-weight:600;">'+(f.op ? escapeHtml(f.op) : "—")+'</td><td>'+(f.producto ? escapeHtml(f.producto) : "—")+'</td><td class="mono" style="font-weight:600;color:var(--amber);">'+f.total+'</td><td class="mono" style="color:var(--red);">'+(f.merma || 0)+'</td><td style="color:var(--muted-2);">'+(f.observaciones ? escapeHtml(f.observaciones) : "—")+'</td></tr>';
     });
-    html += '<tr style="background:var(--panel-alt);"><td colspan="3" class="mono" style="font-weight:700;color:var(--text);">TOTAL</td><td class="mono" style="font-weight:700;color:var(--amber);">'+sumaTotal+'</td><td></td></tr>';
+    html += '<tr style="background:var(--panel-alt);"><td colspan="3" class="mono" style="font-weight:700;color:var(--text);">TOTAL</td><td class="mono" style="font-weight:700;color:var(--amber);">'+sumaTotal+'</td><td class="mono" style="font-weight:700;color:var(--red);">'+sumaMerma+'</td><td></td></tr>';
     html += '</tbody></table></div>';
     resumenContainer.innerHTML = html;
   }
@@ -2012,18 +2014,21 @@
           grupos[opKey] = {
             op: opKey,
             descripcion: r.descripcion || (matchG ? matchG.descripcion : ""),
-            total: 0
+            total: 0,
+            merma: 0
           };
           ordenOps.push(opKey);
         }
         grupos[opKey].total += (r.cantidad || 0);
+        grupos[opKey].merma += (r.merma || 0);
       });
       l.push("• " + m.nombre + ":");
       ordenOps.forEach(function(opKey){
         var g = grupos[opKey];
         var opTxt = g.op ? g.op : "sin OP asignada";
         var descTxt = g.descripcion ? " — " + g.descripcion : "";
-        l.push("   ↳ " + opTxt + descTxt + " (" + g.total + " u)");
+        var mermaTxt = g.merma > 0 ? " (merma " + g.merma + ")" : "";
+        l.push("   ↳ " + opTxt + descTxt + " (" + g.total + " u)" + mermaTxt);
       });
     });
     return l.join("\n");

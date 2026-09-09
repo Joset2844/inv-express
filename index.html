@@ -1996,11 +1996,35 @@
         l.push("• " + m.nombre + ": ⏸ " + t.motivoParada);
         return;
       }
-      var totalMaq = totalProducido(t);
-      var match = buscarEnCatalogo(t.op);
-      var opTxt = t.op ? t.op : "sin OP asignada";
-      var descTxt = match && match.descripcion ? " — " + match.descripcion : "";
-      l.push("• " + m.nombre + ": " + opTxt + descTxt + " (" + totalMaq + " u)");
+      if(!t.registros || t.registros.length === 0){
+        var match = buscarEnCatalogo(t.op);
+        var opTxt = t.op ? t.op : "sin OP asignada";
+        var descTxt = match && match.descripcion ? " — " + match.descripcion : "";
+        l.push("• " + m.nombre + ": " + opTxt + descTxt + " (0 u)");
+        return;
+      }
+      var grupos = {};
+      var ordenOps = [];
+      t.registros.forEach(function(r){
+        var opKey = r.op || t.op || "";
+        if(!grupos[opKey]){
+          var matchG = buscarEnCatalogo(opKey);
+          grupos[opKey] = {
+            op: opKey,
+            descripcion: r.descripcion || (matchG ? matchG.descripcion : ""),
+            total: 0
+          };
+          ordenOps.push(opKey);
+        }
+        grupos[opKey].total += (r.cantidad || 0);
+      });
+      l.push("• " + m.nombre + ":");
+      ordenOps.forEach(function(opKey){
+        var g = grupos[opKey];
+        var opTxt = g.op ? g.op : "sin OP asignada";
+        var descTxt = g.descripcion ? " — " + g.descripcion : "";
+        l.push("   ↳ " + opTxt + descTxt + " (" + g.total + " u)");
+      });
     });
     return l.join("\n");
   }

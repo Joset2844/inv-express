@@ -1748,7 +1748,40 @@
     detalle.appendChild(mermaResumen);
 
     var registrarWrap = document.createElement("div");
-    registrarWrap.style.cssText = "display:flex;gap:8px;";
+    registrarWrap.style.cssText = "display:flex;flex-direction:column;gap:8px;";
+
+    var esVasosEnvases = (maquina.area === "vasos_envases");
+    var modoCantidad = "total";
+
+    var modoTabs = document.createElement("div");
+    modoTabs.style.cssText = "display:flex;gap:6px;";
+    var btnModoTotal = document.createElement("button");
+    btnModoTotal.type = "button";
+    btnModoTotal.textContent = "UND totales";
+    var btnModoCaja = document.createElement("button");
+    btnModoCaja.type = "button";
+    btnModoCaja.textContent = "UND x CAJA";
+    [btnModoTotal, btnModoCaja].forEach(function(b){
+      b.style.cssText = "flex:1;padding:6px 8px;border-radius:16px;border:1px solid var(--border-input);font-size:.68rem;font-weight:600;cursor:pointer;background:var(--panel-alt);color:var(--muted);";
+    });
+    function pintarModoTabs(){
+      btnModoTotal.style.background = modoCantidad === "total" ? "var(--amber)" : "var(--panel-alt)";
+      btnModoTotal.style.color = modoCantidad === "total" ? "#12161F" : "var(--muted)";
+      btnModoTotal.style.borderColor = modoCantidad === "total" ? "var(--amber)" : "var(--border-input)";
+      btnModoCaja.style.background = modoCantidad === "caja" ? "var(--amber)" : "var(--panel-alt)";
+      btnModoCaja.style.color = modoCantidad === "caja" ? "#12161F" : "var(--muted)";
+      btnModoCaja.style.borderColor = modoCantidad === "caja" ? "var(--amber)" : "var(--border-input)";
+    }
+    pintarModoTabs();
+    modoTabs.appendChild(btnModoTotal);
+    modoTabs.appendChild(btnModoCaja);
+    if(esVasosEnvases) registrarWrap.appendChild(modoTabs);
+
+    var filaCantidad = document.createElement("div");
+    filaCantidad.style.cssText = "display:flex;gap:8px;";
+
+    var filaCaja = document.createElement("div");
+    filaCaja.style.cssText = "display:flex;gap:8px;";
 
     var cantInput = document.createElement("input");
     cantInput.type = "number";
@@ -1756,6 +1789,42 @@
     cantInput.className = "mono";
     cantInput.placeholder = "Cant. producida";
     cantInput.style.cssText = "flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;background:var(--panel-alt);color:var(--text);";
+
+    var undXCajaInput = document.createElement("input");
+    undXCajaInput.type = "number";
+    undXCajaInput.min = "0";
+    undXCajaInput.className = "mono";
+    undXCajaInput.placeholder = "Unid. x caja";
+    undXCajaInput.style.cssText = "flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;background:var(--panel-alt);color:var(--text);";
+    var cantCajasInput = document.createElement("input");
+    cantCajasInput.type = "number";
+    cantCajasInput.min = "0";
+    cantCajasInput.className = "mono";
+    cantCajasInput.placeholder = "Cant. cajas";
+    cantCajasInput.style.cssText = "flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;background:var(--panel-alt);color:var(--text);";
+    var totalCajaTxt = document.createElement("span");
+    totalCajaTxt.className = "mono";
+    totalCajaTxt.style.cssText = "flex-shrink:0;align-self:center;font-size:.78rem;font-weight:600;color:var(--amber);min-width:52px;text-align:right;";
+    totalCajaTxt.textContent = "= 0";
+    function actualizarTotalCaja(){
+      var u = parseInt(undXCajaInput.value,10) || 0;
+      var c = parseInt(cantCajasInput.value,10) || 0;
+      totalCajaTxt.textContent = "= " + (u*c);
+    }
+    undXCajaInput.addEventListener("input", actualizarTotalCaja);
+    cantCajasInput.addEventListener("input", actualizarTotalCaja);
+    filaCaja.appendChild(undXCajaInput);
+    filaCaja.appendChild(cantCajasInput);
+
+    function pintarModo(){
+      filaCantidad.classList.toggle("hidden", esVasosEnvases && modoCantidad !== "total");
+      filaCaja.classList.toggle("hidden", !esVasosEnvases || modoCantidad !== "caja");
+      totalCajaTxt.classList.toggle("hidden", !esVasosEnvases || modoCantidad !== "caja");
+    }
+    pintarModo();
+    btnModoTotal.addEventListener("click", function(){ modoCantidad = "total"; pintarModoTabs(); pintarModo(); });
+    btnModoCaja.addEventListener("click", function(){ modoCantidad = "caja"; pintarModoTabs(); pintarModo(); });
+
     var mermaInput = document.createElement("input");
     mermaInput.type = "number";
     mermaInput.min = "0";
@@ -1810,11 +1879,21 @@
     renderRegistros();
 
     btnAdd.addEventListener("click", function(){
-      var cantidad = parseInt(cantInput.value,10);
+      var cantidad;
+      if(esVasosEnvases && modoCantidad === "caja"){
+        var u = parseInt(undXCajaInput.value,10);
+        var c = parseInt(cantCajasInput.value,10);
+        if(!undXCajaInput.value || !cantCajasInput.value || isNaN(u) || isNaN(c) || u <= 0 || c <= 0){
+          mostrarToast("error","Completa unidades x caja y cantidad de cajas"); return;
+        }
+        cantidad = u*c;
+      } else {
+        cantidad = parseInt(cantInput.value,10);
+        if(!cantInput.value || isNaN(cantidad) || cantidad <= 0){ mostrarToast("error","Ingresa una cantidad válida"); return; }
+      }
       var merma = parseInt(mermaInput.value,10);
       if(isNaN(merma) || merma < 0) merma = 0;
-      if(!cantInput.value || isNaN(cantidad) || cantidad <= 0){ mostrarToast("error","Ingresa una cantidad válida"); return; }
-      
+
       var currentOp = t.op || "";
       var match = buscarEnCatalogo(currentOp);
       var descMatch = match ? match.descripcion : "";
@@ -1829,6 +1908,9 @@
       });
       guardarTurno();
       cantInput.value = "";
+      undXCajaInput.value = "";
+      cantCajasInput.value = "";
+      actualizarTotalCaja();
       mermaInput.value = "";
       actualizarMermaResumen();
       actualizarEncabezado();
@@ -1836,9 +1918,15 @@
       mostrarToast("ok","Producción registrada");
     });
 
-    registrarWrap.appendChild(cantInput);
-    registrarWrap.appendChild(mermaInput);
-    registrarWrap.appendChild(btnAdd);
+    filaCantidad.appendChild(cantInput);
+    registrarWrap.appendChild(filaCantidad);
+    registrarWrap.appendChild(filaCaja);
+    var filaMerma = document.createElement("div");
+    filaMerma.style.cssText = "display:flex;gap:8px;";
+    filaMerma.appendChild(mermaInput);
+    if(esVasosEnvases) filaMerma.appendChild(totalCajaTxt);
+    filaMerma.appendChild(btnAdd);
+    registrarWrap.appendChild(filaMerma);
     detalle.appendChild(registrarWrap);
     detalle.appendChild(detalleRegistros);
 

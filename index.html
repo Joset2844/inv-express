@@ -1980,6 +1980,7 @@
       actualizarReferencia();
 
       var blurTimeoutId = null;
+      var ignorarProximoBlur = false;
 
       function confirmarOp(valor){
         valor = valor.trim();
@@ -1989,6 +1990,13 @@
         guardarTurno();
         actualizarEncabezado();
         renderOpBloqueada();
+      }
+
+      function seleccionarSugerencia(op){
+        ignorarProximoBlur = true;
+        if(blurTimeoutId){ clearTimeout(blurTimeoutId); blurTimeoutId = null; }
+        sugBox.classList.add("hidden");
+        confirmarOp(op);
       }
 
       function renderSugerencias(){
@@ -2001,10 +2009,13 @@
           var btn = document.createElement("button");
           btn.className = "suggest-item";
           btn.innerHTML = '<div class="suggest-op mono">'+escapeHtml(m.op)+'</div><div class="suggest-meta">'+escapeHtml(descripcionCorta(m))+' · '+escapeHtml(m.cliente)+'</div>';
+          // touchstart dispara ANTES que el blur del input en cualquier orden de
+          // eventos en móvil, así que es la señal más confiable para bloquear
+          // la sobrescritura por blur. mousedown queda como respaldo en desktop.
+          btn.addEventListener("touchstart", function(){ seleccionarSugerencia(m.op); }, {passive:true});
           btn.addEventListener("mousedown", function(ev){
             ev.preventDefault();
-            if(blurTimeoutId){ clearTimeout(blurTimeoutId); blurTimeoutId = null; }
-            confirmarOp(m.op);
+            seleccionarSugerencia(m.op);
           });
           sugBox.appendChild(btn);
         });
@@ -2017,6 +2028,11 @@
       });
       opFieldInput.addEventListener("focus", renderSugerencias);
       opFieldInput.addEventListener("blur", function(){
+        if(ignorarProximoBlur){
+          ignorarProximoBlur = false;
+          sugBox.classList.add("hidden");
+          return;
+        }
         blurTimeoutId = setTimeout(function(){
           sugBox.classList.add("hidden");
           confirmarOp(opFieldInput.value);

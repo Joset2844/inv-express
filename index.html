@@ -259,12 +259,18 @@
 
 <div id="tabInventario" class="tab-page">
 
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
     <span id="countsInventario" style="font-size:.78rem;color:var(--muted);">0 OP en catálogo · 0 en lista</span>
-    <button class="btn-import" id="btnImport" style="background:var(--amber);color:#12161F;font-weight:600;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <span>Importar catálogo</span>
-    </button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-import" id="btnActualizarPC" style="background:var(--panel-alt);color:var(--text);border:1px solid var(--border-input);font-weight:600;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18-6M22 12.5a10 10 0 0 1-18 6"/></svg>
+        <span>Actualizar catálogo</span>
+      </button>
+      <button class="btn-import" id="btnImport" style="background:var(--amber);color:#12161F;font-weight:600;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Importar catálogo</span>
+      </button>
+    </div>
   </div>
 
   <div class="empty-catalog hidden" id="emptyCatalog">
@@ -479,6 +485,14 @@
     </div>
   </div>
 
+  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+    <div style="display:flex;gap:6px;">
+      <button class="tab-btn active" id="btnTurnoDia" data-turno="dia" style="border-radius:16px;">Turno Día</button>
+      <button class="tab-btn" id="btnTurnoNoche" data-turno="noche" style="border-radius:16px;">Turno Noche</button>
+    </div>
+    <input type="date" id="fechaTurnoInput" style="padding:6px 10px;border-radius:16px;border:1px solid var(--border-input);font-size:.72rem;font-weight:600;background:var(--panel-alt);color:var(--text);outline:none;" />
+  </div>
+
   <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
     <button class="btn-clear" id="btnGuardarPlantilla" style="color:var(--muted-2);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
@@ -491,6 +505,10 @@
     <button class="btn-clear" id="btnExportarTurnoExcel" style="color:var(--muted-2);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Exportar Excel
+    </button>
+    <button class="btn-clear" id="btnEnviarSheets" style="color:var(--muted-2);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18-6M22 12.5a10 10 0 0 1-18 6"/></svg>
+      Enviar a Sheets
     </button>
   </div>
 
@@ -587,6 +605,7 @@
   var STORAGE_TURNO = "inventario_turno_maquinas";
   var STORAGE_HISTORIAL = "inventario_historial_turnos";
   var STORAGE_PLANTILLA = "inventario_plantilla_turno";
+  var STORAGE_META_TURNO = "inventario_meta_turno";
 
   var catalogo = [];
   var lista = [];
@@ -594,6 +613,7 @@
   var turno = [];
   var historial = [];
   var plantilla = [];
+  var metaTurno = { tipo: "dia", fecha: "" };
   var opEncontrada = false;
 
   // ---------- utilidades ----------
@@ -606,6 +626,14 @@
       var c = localStorage.getItem(STORAGE_CATALOGO);
       if(c) catalogo = JSON.parse(c);
     }catch(e){}
+    var migroCatalogo = false;
+    catalogo.forEach(function(item){
+      if(!item.modelos){
+        item.modelos = [{ descripcion: item.descripcion || "", sap: item.sap || "", cantidadTotal: item.cantidadTotal || "" }];
+        migroCatalogo = true;
+      }
+    });
+    if(migroCatalogo) guardarCatalogo();
     try{
       var l = localStorage.getItem(STORAGE_LISTA);
       if(l) lista = JSON.parse(l);
@@ -626,6 +654,14 @@
       var pl = localStorage.getItem(STORAGE_PLANTILLA);
       if(pl) plantilla = JSON.parse(pl);
     }catch(e){}
+    try{
+      var mt = localStorage.getItem(STORAGE_META_TURNO);
+      if(mt) metaTurno = JSON.parse(mt);
+    }catch(e){}
+    if(!metaTurno.fecha){
+      var hoy = new Date();
+      metaTurno.fecha = hoy.getFullYear() + "-" + String(hoy.getMonth()+1).padStart(2,"0") + "-" + String(hoy.getDate()).padStart(2,"0");
+    }
     var migroActiva = false;
     maquinas.forEach(function(m){
       if(typeof m.activa === "undefined"){
@@ -645,6 +681,7 @@
         migroObjetivo = true;
       }
       if(typeof t.motivoParada === "undefined"){ t.motivoParada = ""; migroObjetivo = true; }
+      if(typeof t.modeloIdx === "undefined"){ t.modeloIdx = -1; migroObjetivo = true; }
       t.registros.forEach(function(r){
         if(typeof r.merma === "undefined"){ r.merma = 0; migroObjetivo = true; }
       });
@@ -690,6 +727,12 @@
     try{ localStorage.setItem(STORAGE_PLANTILLA, JSON.stringify(plantilla)); }
     catch(e){ mostrarToast("error","No se pudo guardar la plantilla"); }
   }
+
+  function guardarMetaTurno(){
+    try{ localStorage.setItem(STORAGE_META_TURNO, JSON.stringify(metaTurno)); }
+    catch(e){ mostrarToast("error","No se pudo guardar el turno/fecha"); }
+  }
+
 
 
   function mostrarToast(tipo, texto){
@@ -737,6 +780,21 @@
       consultaContainer = $("consultaContainer"), btnClearBusqueda = $("btnClearBusqueda"),
       chipCaja = $("chipCaja"), chipPaquete = $("chipPaquete"),
       labelUnidades = $("labelUnidades"), labelCantidad = $("labelCantidad");
+
+  var btnTurnoDia = $("btnTurnoDia"), btnTurnoNoche = $("btnTurnoNoche"), fechaTurnoInput = $("fechaTurnoInput");
+
+  function pintarMetaTurno(){
+    btnTurnoDia.classList.toggle("active", metaTurno.tipo === "dia");
+    btnTurnoNoche.classList.toggle("active", metaTurno.tipo === "noche");
+    fechaTurnoInput.value = metaTurno.fecha;
+  }
+
+  btnTurnoDia.addEventListener("click", function(){ metaTurno.tipo = "dia"; guardarMetaTurno(); pintarMetaTurno(); });
+  btnTurnoNoche.addEventListener("click", function(){ metaTurno.tipo = "noche"; guardarMetaTurno(); pintarMetaTurno(); });
+  fechaTurnoInput.addEventListener("change", function(){
+    metaTurno.fecha = fechaTurnoInput.value;
+    guardarMetaTurno();
+  });
 
   var tipoEmpaqueSeleccionado = "caja";
   var ETIQUETAS = {
@@ -792,6 +850,85 @@
   });
 
   // ---------- importar excel ----------
+  // Convierte una hoja (aoa) en un mapa { op: {op, cliente, cantidadTotal, modelos:[...]} }
+  // agrupando filas repetidas de una misma OP como modelos distintos.
+  function parsearHojaCatalogo(sheet){
+    var rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:""});
+    if(rows.length < 2) return null;
+    var headers = rows[0].map(normalizar);
+    var idxOp = headers.findIndex(function(h){ return h.indexOf("op") !== -1; });
+    var idxDesc = headers.findIndex(function(h){ return h.indexOf("descripcion") !== -1; });
+    var idxCliente = headers.findIndex(function(h){ return h.indexOf("cliente") !== -1; });
+    var idxCantidad = headers.findIndex(function(h){ return h.indexOf("cantidad") !== -1 || h.indexOf("total") !== -1; });
+    var idxSap = headers.findIndex(function(h){ return h.indexOf("sap") !== -1; });
+    if(idxOp === -1 || idxDesc === -1 || idxCliente === -1) return null;
+
+    var filasValidas = rows.slice(1).filter(function(r){ return String(r[idxOp]).trim() !== ""; });
+    var mapaOps = {};
+    var ordenOps = [];
+    filasValidas.forEach(function(r){
+      var op = String(r[idxOp]).trim();
+      var cliente = String(r[idxCliente]).trim();
+      var cantidad = idxCantidad !== -1 ? String(r[idxCantidad]).trim() : "";
+      var modelo = {
+        descripcion: String(r[idxDesc]).trim(),
+        sap: idxSap !== -1 ? String(r[idxSap]).trim() : "",
+        cantidadTotal: cantidad
+      };
+      if(!mapaOps[op]){
+        mapaOps[op] = { op: op, cliente: cliente, cantidadTotal: 0, modelos: [] };
+        ordenOps.push(op);
+      }
+      mapaOps[op].modelos.push(modelo);
+      var n = parseInt(cantidad, 10);
+      if(!isNaN(n)) mapaOps[op].cantidadTotal += n;
+    });
+    return { mapaOps: mapaOps, ordenOps: ordenOps };
+  }
+
+  function procesarWorkbook(wb){
+    var sheetPrincipal = wb.Sheets[wb.SheetNames[0]];
+    var principal = parsearHojaCatalogo(sheetPrincipal);
+    if(!principal){
+      mostrarToast("error","Debe tener columnas OP, Descripción y Cliente");
+      return false;
+    }
+
+    var mapaFinal = principal.mapaOps;
+    var ordenFinal = principal.ordenOps.slice();
+
+    // Segunda hoja opcional: OP con varios modelos (mismos títulos de columna).
+    // Si una OP aparece ahí, reemplaza por completo lo que traía de la primera hoja.
+    if(wb.SheetNames.length > 1){
+      var sheetModelos = wb.Sheets[wb.SheetNames[1]];
+      var modelos = parsearHojaCatalogo(sheetModelos);
+      if(modelos){
+        modelos.ordenOps.forEach(function(op){
+          if(!mapaFinal[op]) ordenFinal.push(op);
+          mapaFinal[op] = modelos.mapaOps[op];
+        });
+      }
+    }
+
+    var nuevo = ordenFinal.map(function(op){
+      var item = mapaFinal[op];
+      if(item.modelos.length > 1){
+        item.descripcion = "Varios modelos (" + item.modelos.length + ")";
+        item.sap = "";
+      } else {
+        item.descripcion = item.modelos[0].descripcion;
+        item.sap = item.modelos[0].sap;
+      }
+      return item;
+    });
+
+    catalogo = nuevo;
+    guardarCatalogo();
+    actualizarContadores();
+    renderConsulta();
+    return nuevo.length;
+  }
+
   function handleFile(file){
     if(!file) return;
     var reader = new FileReader();
@@ -799,35 +936,8 @@
       try{
         var data = new Uint8Array(evt.target.result);
         var wb = XLSX.read(data, {type:"array"});
-        var sheet = wb.Sheets[wb.SheetNames[0]];
-        var rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:""});
-        if(rows.length < 2){ mostrarToast("error","El archivo no tiene datos"); return; }
-        var headers = rows[0].map(normalizar);
-        var idxOp = headers.findIndex(function(h){ return h.indexOf("op") !== -1; });
-        var idxDesc = headers.findIndex(function(h){ return h.indexOf("descripcion") !== -1; });
-        var idxCliente = headers.findIndex(function(h){ return h.indexOf("cliente") !== -1; });
-        var idxCantidad = headers.findIndex(function(h){ return h.indexOf("cantidad") !== -1 || h.indexOf("total") !== -1; });
-        var idxSap = headers.findIndex(function(h){ return h.indexOf("sap") !== -1; });
-        if(idxOp === -1 || idxDesc === -1 || idxCliente === -1){
-          mostrarToast("error","Debe tener columnas OP, Descripción y Cliente");
-          return;
-        }
-        var nuevo = rows.slice(1)
-          .filter(function(r){ return String(r[idxOp]).trim() !== ""; })
-          .map(function(r){
-            return {
-              op: String(r[idxOp]).trim(),
-              descripcion: String(r[idxDesc]).trim(),
-              cliente: String(r[idxCliente]).trim(),
-              cantidadTotal: idxCantidad !== -1 ? String(r[idxCantidad]).trim() : "",
-              sap: idxSap !== -1 ? String(r[idxSap]).trim() : ""
-            };
-          });
-        catalogo = nuevo;
-        guardarCatalogo();
-        mostrarToast("ok","Catálogo cargado: " + nuevo.length + " OP importadas");
-        actualizarContadores();
-        renderConsulta();
+        var n = procesarWorkbook(wb);
+        if(n !== false) mostrarToast("ok","Catálogo cargado: " + n + " OP importadas");
       }catch(err){
         mostrarToast("error","No se pudo leer el archivo");
       }
@@ -841,6 +951,53 @@
   });
   $("btnImport").addEventListener("click", function(){ $("fileInput").click(); });
   $("btnImport2").addEventListener("click", function(){ $("fileInput").click(); });
+
+  // ---------- actualizar catálogo desde Google Sheets ----------
+  var STORAGE_URL_SHEETS = "inventario_url_sheets_catalogo";
+
+  function pedirUrlSheets(){
+    var actual = "";
+    try{ actual = localStorage.getItem(STORAGE_URL_SHEETS) || ""; }catch(e){}
+    var nueva = prompt("Link de la hoja de Google Sheets (publicada como CSV):", actual);
+    if(nueva === null) return null;
+    nueva = nueva.trim();
+    if(nueva){ try{ localStorage.setItem(STORAGE_URL_SHEETS, nueva); }catch(e){} }
+    return nueva;
+  }
+
+  $("btnActualizarPC").addEventListener("click", function(){
+    var url = "";
+    try{ url = localStorage.getItem(STORAGE_URL_SHEETS) || ""; }catch(e){}
+    if(!url){
+      url = pedirUrlSheets();
+      if(!url) return;
+    }
+    var btn = $("btnActualizarPC");
+    var textoOriginal = btn.querySelector("span").textContent;
+    btn.disabled = true;
+    btn.querySelector("span").textContent = "Actualizando...";
+    fetch(url, { cache: "no-store" })
+      .then(function(resp){
+        if(!resp.ok) throw new Error("HTTP " + resp.status);
+        return resp.text();
+      })
+      .then(function(csvTexto){
+        var wb = XLSX.read(csvTexto, {type:"string"});
+        var n = procesarWorkbook(wb);
+        if(n !== false) mostrarToast("ok","Catálogo actualizado: " + n + " OP");
+      })
+      .catch(function(err){
+        mostrarToast("error","No se pudo descargar el catálogo. Revisa el link.");
+      })
+      .finally(function(){
+        btn.disabled = false;
+        btn.querySelector("span").textContent = textoOriginal;
+      });
+  });
+
+  $("btnActualizarPC").addEventListener("dblclick", function(){
+    pedirUrlSheets();
+  });
 
   // ---------- autocompletar OP ----------
   function renderSugerencias(query){
@@ -1211,7 +1368,7 @@
           maquina: m.nombre,
           area: m.area || "",
           op: t.op || "",
-          producto: match ? match.descripcion : "",
+          producto: match ? resolverModelo(match, t.modeloIdx).descripcion : "",
           total: 0,
           merma: 0,
           observaciones: t.motivoParada || ""
@@ -1249,6 +1406,21 @@
             observaciones: t.motivoParada || ""
           });
         });
+
+        // Si la OP actual de la máquina cambió y todavía no tiene registros
+        // propios, igual debe aparecer (en 0) para no perderla del reporte.
+        if(t.op && ordenOps.indexOf(t.op) === -1){
+          var matchActual = buscarEnCatalogo(t.op);
+          filas.push({
+            maquina: m.nombre,
+            area: m.area || "",
+            op: t.op,
+            producto: matchActual ? resolverModelo(matchActual, t.modeloIdx).descripcion : "",
+            total: 0,
+            merma: 0,
+            observaciones: t.motivoParada || ""
+          });
+        }
       }
     });
     return filas;
@@ -1311,14 +1483,76 @@
     return wb;
   }
 
+  function formatearFechaTurno(){
+    var partes = (metaTurno.fecha || "").split("-");
+    if(partes.length !== 3) return new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
+    return partes[2] + "/" + partes[1] + "/" + partes[0];
+  }
+  function etiquetaTurno(){
+    return metaTurno.tipo === "noche" ? "Turno Noche" : "Turno Día";
+  }
+
   $("btnExportarTurnoExcel").addEventListener("click", function(){
     var filas = filasTurnoParaExcel();
     if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para exportar"); return; }
-    var fechaTxt = new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
-    var wb = construirLibroTurno(filas, "PRODUCCION TURNO " + fechaTxt);
+    var fechaTxt = formatearFechaTurno();
+    var wb = construirLibroTurno(filas, "PRODUCCION " + etiquetaTurno().toUpperCase() + " " + fechaTxt);
     var nombre = "turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-") + ".xlsx";
     try{ exportarLibroComoArchivo(wb, nombre); }
     catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
+  });
+
+  // ---------- enviar resumen de turno a Google Sheets ----------
+  var STORAGE_URL_APPSCRIPT = "inventario_url_appscript_turno";
+
+  function pedirUrlAppScript(){
+    var actual = "";
+    try{ actual = localStorage.getItem(STORAGE_URL_APPSCRIPT) || ""; }catch(e){}
+    var nueva = prompt("Link de la Web App de Google Apps Script:", actual);
+    if(nueva === null) return null;
+    nueva = nueva.trim();
+    if(nueva){ try{ localStorage.setItem(STORAGE_URL_APPSCRIPT, nueva); }catch(e){} }
+    return nueva;
+  }
+
+  $("btnEnviarSheets").addEventListener("click", function(){
+    var filas = filasTurnoParaExcel();
+    if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para enviar"); return; }
+    var url = "";
+    try{ url = localStorage.getItem(STORAGE_URL_APPSCRIPT) || ""; }catch(e){}
+    if(!url){
+      url = pedirUrlAppScript();
+      if(!url) return;
+    }
+    var btn = $("btnEnviarSheets");
+    var textoOriginal = btn.textContent.trim();
+    btn.disabled = true;
+    btn.innerHTML = btn.innerHTML.replace(textoOriginal, "Enviando...");
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ fecha: formatearFechaTurno(), tipo: metaTurno.tipo, filas: filas })
+    })
+      .then(function(resp){
+        if(!resp.ok) throw new Error("HTTP " + resp.status);
+        return resp.json();
+      })
+      .then(function(data){
+        if(data && data.ok){
+          mostrarToast("ok", "Guardado en \"" + data.hoja + "\" (" + data.filas + " filas)");
+        } else {
+          mostrarToast("error", (data && data.error) ? data.error : "Google Sheets no confirmó el guardado");
+        }
+      })
+      .catch(function(){ mostrarToast("error","No se pudo enviar a Sheets. Revisa el link."); })
+      .finally(function(){
+        btn.disabled = false;
+        btn.innerHTML = btn.innerHTML.replace("Enviando...", textoOriginal);
+      });
+  });
+
+  $("btnEnviarSheets").addEventListener("dblclick", function(){
+    pedirUrlAppScript();
   });
 
   // ---------- resumen de producción ----------
@@ -1394,6 +1628,23 @@
     var q = op.trim().toLowerCase();
     if(!q) return null;
     return catalogo.find(function(c){ return c.op.toLowerCase() === q; }) || null;
+  }
+
+  function descripcionCorta(match){
+    if(!match || !match.modelos || match.modelos.length === 0) return match ? (match.descripcion||"") : "";
+    if(match.modelos.length === 1) return match.modelos[0].descripcion;
+    return match.modelos.length + " modelos disponibles";
+  }
+
+  // Resuelve descripción/SAP según el modelo elegido para ese turno (modeloIdx),
+  // o el modelo único si la OP solo tiene uno, o "Varios modelos" si no se eligió.
+  function resolverModelo(match, modeloIdx){
+    if(!match || !match.modelos || match.modelos.length === 0){
+      return { descripcion: match ? (match.descripcion||"") : "", sap: match ? (match.sap||"") : "" };
+    }
+    if(match.modelos.length === 1) return match.modelos[0];
+    if(typeof modeloIdx === "number" && modeloIdx >= 0 && match.modelos[modeloIdx]) return match.modelos[modeloIdx];
+    return { descripcion: "Varios modelos (sin elegir)", sap: "" };
   }
 
   function crearTarjetaMaquina(item){
@@ -1533,7 +1784,7 @@
   function obtenerTurno(maquinaId){
     var t = turno.find(function(x){ return x.maquinaId === maquinaId; });
     if(!t){
-      t = { maquinaId: maquinaId, op: "", objetivo: null, motivoParada: "", registros: [] };
+      t = { maquinaId: maquinaId, op: "", objetivo: null, motivoParada: "", modeloIdx: -1, registros: [] };
       turno.push(t);
     }
     return t;
@@ -1594,7 +1845,8 @@
         subEl.textContent = "⏸ " + t.motivoParada;
       } else if(t.op){
         var match = buscarEnCatalogo(t.op);
-        subEl.textContent = t.op + (match && match.descripcion ? " — " + match.descripcion : "");
+        var descTxtEncabezado = match ? resolverModelo(match, t.modeloIdx).descripcion : "";
+        subEl.textContent = t.op + (descTxtEncabezado ? " — " + descTxtEncabezado : "");
       } else {
         subEl.textContent = "Sin OP asignada";
       }
@@ -1652,6 +1904,7 @@
       btnQuitar.style.cssText = "background:none;border:none;color:var(--red);font-size:.72rem;font-weight:600;cursor:pointer;white-space:nowrap;";
       btnQuitar.addEventListener("click", function(){
         t.op = "";
+        t.modeloIdx = -1;
         guardarTurno();
         actualizarEncabezado();
         renderOpEditable();
@@ -1659,7 +1912,43 @@
       box.appendChild(txt);
       box.appendChild(btnQuitar);
       opContainer.appendChild(box);
-      referencia.innerHTML = match ? (escapeHtml(match.descripcion) + ' · ' + escapeHtml(match.cliente)) : "";
+
+      if(match && match.modelos && match.modelos.length > 1){
+        var modeloWrap = document.createElement("div");
+        modeloWrap.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;";
+
+        function crearChipModelo(label, idx){
+          var chip = document.createElement("button");
+          chip.type = "button";
+          chip.textContent = label;
+          chip.style.cssText = "padding:5px 10px;border-radius:14px;border:1px solid var(--border-input);font-size:.68rem;font-weight:600;cursor:pointer;background:var(--panel-alt);color:var(--muted);";
+          function pintar(){
+            var activo = (t.modeloIdx === idx);
+            chip.style.background = activo ? "var(--amber)" : "var(--panel-alt)";
+            chip.style.color = activo ? "#12161F" : "var(--muted)";
+            chip.style.borderColor = activo ? "var(--amber)" : "var(--border-input)";
+          }
+          pintar();
+          chip.addEventListener("click", function(){
+            t.modeloIdx = idx;
+            guardarTurno();
+            actualizarEncabezado();
+            renderOpBloqueada();
+          });
+          return chip;
+        }
+
+        modeloWrap.appendChild(crearChipModelo("Total (todos)", -1));
+        match.modelos.forEach(function(m, idx){
+          modeloWrap.appendChild(crearChipModelo(m.descripcion || ("Modelo " + (idx+1)), idx));
+        });
+        opContainer.appendChild(modeloWrap);
+      }
+
+      var modeloElegido = resolverModelo(match, t.modeloIdx);
+      referencia.innerHTML = match
+        ? (escapeHtml(modeloElegido.descripcion) + ' · ' + escapeHtml(match.cliente) + (modeloElegido.sap ? ' · SAP ' + escapeHtml(modeloElegido.sap) : ''))
+        : "";
     }
 
     function renderOpEditable(){
@@ -1681,7 +1970,7 @@
       function actualizarReferencia(){
         var match = buscarEnCatalogo(opFieldInput.value);
         if(match){
-          referencia.innerHTML = escapeHtml(match.descripcion) + ' · ' + escapeHtml(match.cliente);
+          referencia.innerHTML = escapeHtml(descripcionCorta(match)) + ' · ' + escapeHtml(match.cliente);
         } else if(opFieldInput.value.trim()){
           referencia.textContent = "Sin coincidencia en el catálogo";
         } else {
@@ -1690,10 +1979,13 @@
       }
       actualizarReferencia();
 
+      var blurTimeoutId = null;
+
       function confirmarOp(valor){
         valor = valor.trim();
         if(!valor) return;
         t.op = valor;
+        t.modeloIdx = -1;
         guardarTurno();
         actualizarEncabezado();
         renderOpBloqueada();
@@ -1708,9 +2000,10 @@
         matches.forEach(function(m){
           var btn = document.createElement("button");
           btn.className = "suggest-item";
-          btn.innerHTML = '<div class="suggest-op mono">'+escapeHtml(m.op)+'</div><div class="suggest-meta">'+escapeHtml(m.descripcion)+' · '+escapeHtml(m.cliente)+'</div>';
+          btn.innerHTML = '<div class="suggest-op mono">'+escapeHtml(m.op)+'</div><div class="suggest-meta">'+escapeHtml(descripcionCorta(m))+' · '+escapeHtml(m.cliente)+'</div>';
           btn.addEventListener("mousedown", function(ev){
             ev.preventDefault();
+            if(blurTimeoutId){ clearTimeout(blurTimeoutId); blurTimeoutId = null; }
             confirmarOp(m.op);
           });
           sugBox.appendChild(btn);
@@ -1724,9 +2017,10 @@
       });
       opFieldInput.addEventListener("focus", renderSugerencias);
       opFieldInput.addEventListener("blur", function(){
-        setTimeout(function(){
+        blurTimeoutId = setTimeout(function(){
           sugBox.classList.add("hidden");
           confirmarOp(opFieldInput.value);
+          blurTimeoutId = null;
         }, 150);
       });
       opFieldInput.addEventListener("keydown", function(e){
@@ -1896,7 +2190,7 @@
 
       var currentOp = t.op || "";
       var match = buscarEnCatalogo(currentOp);
-      var descMatch = match ? match.descripcion : "";
+      var descMatch = resolverModelo(match, t.modeloIdx).descripcion;
 
       t.registros.unshift({
         id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
@@ -2128,7 +2422,7 @@
       if(!t.registros || t.registros.length === 0){
         var match = buscarEnCatalogo(t.op);
         var opTxt = t.op ? t.op : "sin OP asignada";
-        var descTxt = match && match.descripcion ? " — " + match.descripcion : "";
+        var descTxt = match ? (resolverModelo(match, t.modeloIdx).descripcion ? " — " + resolverModelo(match, t.modeloIdx).descripcion : "") : "";
         l.push("• " + m.nombre + ": " + opTxt + descTxt + " (0 u)");
         return;
       }
@@ -2140,7 +2434,7 @@
           var matchG = buscarEnCatalogo(opKey);
           grupos[opKey] = {
             op: opKey,
-            descripcion: r.descripcion || (matchG ? matchG.descripcion : ""),
+            descripcion: r.descripcion || (matchG ? resolverModelo(matchG, t.modeloIdx).descripcion : ""),
             total: 0,
             merma: 0
           };
@@ -2157,6 +2451,11 @@
         var mermaTxt = g.merma > 0 ? " (merma " + g.merma + ")" : "";
         l.push("   ↳ " + opTxt + descTxt + " (" + g.total + " u)" + mermaTxt);
       });
+      if(t.op && ordenOps.indexOf(t.op) === -1){
+        var matchActual = buscarEnCatalogo(t.op);
+        var descActual = matchActual ? resolverModelo(matchActual, t.modeloIdx).descripcion : "";
+        l.push("   ↳ " + t.op + (descActual ? " — " + descActual : "") + " (0 u)");
+      }
     });
     return l.join("\n");
   }
@@ -2192,6 +2491,7 @@
 
   // ---------- init ----------
   cargarStorage();
+  pintarMetaTurno();
   actualizarTotalForm();
   renderLista();
   actualizarContadores();

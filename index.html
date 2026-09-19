@@ -672,6 +672,7 @@
         migroActiva = true;
       }
       if(typeof m.area === "undefined"){ m.area = ""; migroActiva = true; }
+      if(typeof m.codigo === "undefined"){ m.codigo = ""; migroActiva = true; }
     });
     if(migroActiva) guardarMaquinas();
 
@@ -684,6 +685,7 @@
       }
       if(typeof t.motivoParada === "undefined"){ t.motivoParada = ""; migroObjetivo = true; }
       if(typeof t.modeloIdx === "undefined"){ t.modeloIdx = -1; migroObjetivo = true; }
+      if(typeof t.observaciones === "undefined"){ t.observaciones = ""; migroObjetivo = true; }
       t.registros.forEach(function(r){
         if(typeof r.merma === "undefined"){ r.merma = 0; migroObjetivo = true; }
       });
@@ -1519,6 +1521,13 @@
     if(!compartido) intentarDescargaClasica(blob, nombre);
   }
 
+  function textoObservaciones(t){
+    var partes = [];
+    if(t.motivoParada) partes.push("Detenida: " + t.motivoParada);
+    if(t.observaciones) partes.push(t.observaciones);
+    return partes.join(" | ");
+  }
+
   function filasTurnoParaExcel(){
     var filas = [];
     ordenarPorNombre(maquinas.filter(function(m){ return m.activa; })).forEach(function(m){
@@ -1528,13 +1537,14 @@
         var modeloVacio = resolverModelo(match, t.modeloIdx);
         filas.push({
           maquina: m.nombre,
+          codigoMaquina: m.codigo || "",
           area: m.area || "",
           op: t.op || "",
           sap: match ? (modeloVacio.sap || "") : "",
           producto: match ? modeloVacio.descripcion : "",
           total: 0,
           merma: 0,
-          observaciones: t.motivoParada || ""
+          observaciones: textoObservaciones(t)
         });
       } else {
         var grupos = {};
@@ -1566,13 +1576,14 @@
           var prodDesc = g.descripcion || (match ? match.descripcion : "");
           filas.push({
             maquina: m.nombre,
+            codigoMaquina: m.codigo || "",
             area: m.area || "",
             op: g.op,
             sap: g.sap || "",
             producto: prodDesc,
             total: g.total,
             merma: g.merma,
-            observaciones: t.motivoParada || ""
+            observaciones: textoObservaciones(t)
           });
         });
 
@@ -1583,13 +1594,14 @@
           var modeloActual = resolverModelo(matchActual, t.modeloIdx);
           filas.push({
             maquina: m.nombre,
+            codigoMaquina: m.codigo || "",
             area: m.area || "",
             op: t.op,
             sap: matchActual ? (modeloActual.sap || "") : "",
             producto: matchActual ? modeloActual.descripcion : "",
             total: 0,
             merma: 0,
-            observaciones: t.motivoParada || ""
+            observaciones: textoObservaciones(t)
           });
         }
       }
@@ -1607,30 +1619,31 @@
     var aoa = [[titulo]];
     var merges = [];
     var fila = 0;
-    merges.push({ s:{r:0,c:0}, e:{r:0,c:6} });
+    merges.push({ s:{r:0,c:0}, e:{r:0,c:7} });
     fila = 1;
 
     AREAS_ORDEN.forEach(function(areaDef){
       var filasArea = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
       if(filasArea.length === 0) return;
 
-      aoa.push([areaDef.label, "", "", "", "", "", ""]);
-      merges.push({ s:{r:fila,c:0}, e:{r:fila,c:6} });
+      aoa.push([areaDef.label, "", "", "", "", "", "", ""]);
+      merges.push({ s:{r:fila,c:0}, e:{r:fila,c:7} });
       fila++;
 
-      aoa.push(["MAQUINA","OP'S","SAP","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]);
+      aoa.push(["MAQUINA","CODIGO MAQUINA","OP'S","SAP","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]);
       fila++;
 
       var inicioDatos = fila;
       var totalArea = 0, mermaArea = 0;
       var maquinaAnterior = null, inicioMerge = fila;
       filasArea.forEach(function(f, idx){
-        aoa.push([f.maquina, f.op, f.sap || "", f.producto, f.total, f.merma, f.observaciones]);
+        aoa.push([f.maquina, f.codigoMaquina || "", f.op, f.sap || "", f.producto, f.total, f.merma, f.observaciones]);
         totalArea += f.total;
         mermaArea += f.merma;
         if(f.maquina !== maquinaAnterior){
           if(maquinaAnterior !== null && fila - inicioMerge > 1){
             merges.push({ s:{r:inicioMerge,c:0}, e:{r:fila-1,c:0} });
+            merges.push({ s:{r:inicioMerge,c:1}, e:{r:fila-1,c:1} });
           }
           inicioMerge = fila;
           maquinaAnterior = f.maquina;
@@ -1639,16 +1652,17 @@
       });
       if(fila - inicioMerge > 1){
         merges.push({ s:{r:inicioMerge,c:0}, e:{r:fila-1,c:0} });
+        merges.push({ s:{r:inicioMerge,c:1}, e:{r:fila-1,c:1} });
       }
 
-      aoa.push(["TOTAL","","","",totalArea,mermaArea,""]);
-      merges.push({ s:{r:fila,c:0}, e:{r:fila,c:3} });
+      aoa.push(["TOTAL","","","","",totalArea,mermaArea,""]);
+      merges.push({ s:{r:fila,c:0}, e:{r:fila,c:4} });
       fila++;
     });
 
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws["!merges"] = merges;
-    ws["!cols"] = [{wch:16},{wch:12},{wch:14},{wch:40},{wch:16},{wch:10},{wch:28}];
+    ws["!cols"] = [{wch:16},{wch:14},{wch:12},{wch:14},{wch:40},{wch:16},{wch:10},{wch:28}];
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Turno");
     return wb;
@@ -1785,7 +1799,8 @@
         id: Date.now()+"-"+Math.random().toString(36).slice(2,7)+"-"+Math.random().toString(36).slice(2,5),
         nombre: nombre,
         activa: false,
-        area: ""
+        area: "",
+        codigo: ""
       });
     });
     guardarMaquinas();
@@ -1821,10 +1836,29 @@
   function crearTarjetaMaquina(item){
     var card = document.createElement("div");
     card.className = "item-card";
+    card.style.cssText = "flex-wrap:wrap;";
+
+    var izquierda = document.createElement("div");
+    izquierda.style.cssText = "display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
+
     var nombreEl = document.createElement("span");
     nombreEl.className = "mono";
     nombreEl.style.cssText = "font-weight:600;font-size:.95rem;color:var(--text);";
     nombreEl.textContent = item.nombre;
+
+    var codigoInput = document.createElement("input");
+    codigoInput.type = "text";
+    codigoInput.className = "mono";
+    codigoInput.placeholder = "Código";
+    codigoInput.value = item.codigo || "";
+    codigoInput.style.cssText = "width:90px;padding:5px 8px;border-radius:14px;border:1px solid var(--border-input);font-size:.68rem;font-weight:600;outline:none;background:var(--panel-alt);color:var(--text);";
+    codigoInput.addEventListener("change", function(){
+      item.codigo = codigoInput.value.trim();
+      guardarMaquinas();
+    });
+
+    izquierda.appendChild(nombreEl);
+    izquierda.appendChild(codigoInput);
 
     var derecha = document.createElement("div");
     derecha.style.cssText = "display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;";
@@ -1871,7 +1905,7 @@
     derecha.appendChild(areaSelect);
     derecha.appendChild(toggle);
     derecha.appendChild(btnDel);
-    card.appendChild(nombreEl);
+    card.appendChild(izquierda);
     card.appendChild(derecha);
     return card;
   }
@@ -1955,7 +1989,7 @@
   function obtenerTurno(maquinaId){
     var t = turno.find(function(x){ return x.maquinaId === maquinaId; });
     if(!t){
-      t = { maquinaId: maquinaId, op: "", objetivo: null, motivoParada: "", modeloIdx: -1, registros: [] };
+      t = { maquinaId: maquinaId, op: "", objetivo: null, motivoParada: "", observaciones: "", modeloIdx: -1, registros: [] };
       turno.push(t);
     }
     return t;
@@ -2052,6 +2086,17 @@
       actualizarEncabezado();
     });
     detalle.appendChild(motivoInput);
+
+    var observacionesInput = document.createElement("input");
+    observacionesInput.type = "text";
+    observacionesInput.placeholder = "Observaciones del turno (opcional, sin importar si está detenida)";
+    observacionesInput.value = t.observaciones || "";
+    observacionesInput.style.cssText = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;margin-bottom:8px;background:var(--panel-alt);color:var(--text);";
+    observacionesInput.addEventListener("input", function(){
+      t.observaciones = observacionesInput.value.trim();
+      guardarTurno();
+    });
+    detalle.appendChild(observacionesInput);
 
     var opContainer = document.createElement("div");
     detalle.appendChild(opContainer);
@@ -2606,14 +2651,16 @@
     activas.forEach(function(m){
       var t = obtenerTurno(m.id);
       if(t.motivoParada){
-        l.push("• " + m.nombre + ": ⏸ " + t.motivoParada);
+        var obsTxt = t.observaciones ? " · " + t.observaciones : "";
+        l.push("• " + m.nombre + ": ⏸ " + t.motivoParada + obsTxt);
         return;
       }
       if(!t.registros || t.registros.length === 0){
         var match = buscarEnCatalogo(t.op);
         var opTxt = t.op ? t.op : "sin OP asignada";
         var descTxt = match ? (resolverModelo(match, t.modeloIdx).descripcion ? " — " + resolverModelo(match, t.modeloIdx).descripcion : "") : "";
-        l.push("• " + m.nombre + ": " + opTxt + descTxt + " (0 u)");
+        var obsTxtVacio = t.observaciones ? " · " + t.observaciones : "";
+        l.push("• " + m.nombre + ": " + opTxt + descTxt + " (0 u)" + obsTxtVacio);
         return;
       }
       var grupos = {};
@@ -2650,6 +2697,7 @@
         var descActual = matchActual ? resolverModelo(matchActual, t.modeloIdx).descripcion : "";
         l.push("   ↳ " + t.op + (descActual ? " — " + descActual : "") + " (0 u)");
       }
+      if(t.observaciones) l.push("   " + t.observaciones);
     });
     return l.join("\n");
   }

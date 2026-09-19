@@ -1405,11 +1405,13 @@
       var t = obtenerTurno(m.id);
       if(!t.registros || t.registros.length === 0){
         var match = buscarEnCatalogo(t.op);
+        var modeloVacio = resolverModelo(match, t.modeloIdx);
         filas.push({
           maquina: m.nombre,
           area: m.area || "",
           op: t.op || "",
-          producto: match ? resolverModelo(match, t.modeloIdx).descripcion : "",
+          sap: match ? (modeloVacio.sap || "") : "",
+          producto: match ? modeloVacio.descripcion : "",
           total: 0,
           merma: 0,
           observaciones: t.motivoParada || ""
@@ -1427,6 +1429,7 @@
             grupos[claveGrupo] = {
               op: opKey,
               descripcion: descKey || (match ? match.descripcion : ""),
+              sap: r.sap || (match ? (match.sap || "") : ""),
               total: 0,
               merma: 0
             };
@@ -1445,6 +1448,7 @@
             maquina: m.nombre,
             area: m.area || "",
             op: g.op,
+            sap: g.sap || "",
             producto: prodDesc,
             total: g.total,
             merma: g.merma,
@@ -1456,11 +1460,13 @@
         // propios, igual debe aparecer (en 0) para no perderla del reporte.
         if(t.op && opsConGrupo.indexOf(t.op) === -1){
           var matchActual = buscarEnCatalogo(t.op);
+          var modeloActual = resolverModelo(matchActual, t.modeloIdx);
           filas.push({
             maquina: m.nombre,
             area: m.area || "",
             op: t.op,
-            producto: matchActual ? resolverModelo(matchActual, t.modeloIdx).descripcion : "",
+            sap: matchActual ? (modeloActual.sap || "") : "",
+            producto: matchActual ? modeloActual.descripcion : "",
             total: 0,
             merma: 0,
             observaciones: t.motivoParada || ""
@@ -1481,25 +1487,25 @@
     var aoa = [[titulo]];
     var merges = [];
     var fila = 0;
-    merges.push({ s:{r:0,c:0}, e:{r:0,c:5} });
+    merges.push({ s:{r:0,c:0}, e:{r:0,c:6} });
     fila = 1;
 
     AREAS_ORDEN.forEach(function(areaDef){
       var filasArea = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
       if(filasArea.length === 0) return;
 
-      aoa.push([areaDef.label, "", "", "", "", ""]);
-      merges.push({ s:{r:fila,c:0}, e:{r:fila,c:5} });
+      aoa.push([areaDef.label, "", "", "", "", "", ""]);
+      merges.push({ s:{r:fila,c:0}, e:{r:fila,c:6} });
       fila++;
 
-      aoa.push(["MAQUINA","OP'S","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]);
+      aoa.push(["MAQUINA","OP'S","SAP","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]);
       fila++;
 
       var inicioDatos = fila;
       var totalArea = 0, mermaArea = 0;
       var maquinaAnterior = null, inicioMerge = fila;
       filasArea.forEach(function(f, idx){
-        aoa.push([f.maquina, f.op, f.producto, f.total, f.merma, f.observaciones]);
+        aoa.push([f.maquina, f.op, f.sap || "", f.producto, f.total, f.merma, f.observaciones]);
         totalArea += f.total;
         mermaArea += f.merma;
         if(f.maquina !== maquinaAnterior){
@@ -1515,14 +1521,14 @@
         merges.push({ s:{r:inicioMerge,c:0}, e:{r:fila-1,c:0} });
       }
 
-      aoa.push(["TOTAL","","",totalArea,mermaArea,""]);
-      merges.push({ s:{r:fila,c:0}, e:{r:fila,c:2} });
+      aoa.push(["TOTAL","","","",totalArea,mermaArea,""]);
+      merges.push({ s:{r:fila,c:0}, e:{r:fila,c:3} });
       fila++;
     });
 
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws["!merges"] = merges;
-    ws["!cols"] = [{wch:16},{wch:12},{wch:44},{wch:16},{wch:10},{wch:28}];
+    ws["!cols"] = [{wch:16},{wch:12},{wch:14},{wch:40},{wch:16},{wch:10},{wch:28}];
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Turno");
     return wb;
@@ -2251,12 +2257,15 @@
 
       var currentOp = t.op || "";
       var match = buscarEnCatalogo(currentOp);
-      var descMatch = resolverModelo(match, t.modeloIdx).descripcion;
+      var modeloElegido = resolverModelo(match, t.modeloIdx);
+      var descMatch = modeloElegido.descripcion;
+      var sapMatch = modeloElegido.sap || "";
 
       t.registros.unshift({
         id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
         op: currentOp,
         descripcion: descMatch,
+        sap: sapMatch,
         cantidad: cantidad,
         merma: merma,
         fecha: new Date().toISOString()

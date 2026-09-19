@@ -1416,25 +1416,29 @@
         });
       } else {
         var grupos = {};
-        var ordenOps = [];
+        var ordenGrupos = [];
+        var opsConGrupo = [];
         t.registros.forEach(function(r){
           var opKey = r.op || t.op || "";
-          if(!grupos[opKey]){
+          var descKey = r.descripcion || "";
+          var claveGrupo = opKey + "||" + descKey;
+          if(!grupos[claveGrupo]){
             var match = buscarEnCatalogo(opKey);
-            grupos[opKey] = {
+            grupos[claveGrupo] = {
               op: opKey,
-              descripcion: r.descripcion || (match ? match.descripcion : ""),
+              descripcion: descKey || (match ? match.descripcion : ""),
               total: 0,
               merma: 0
             };
-            ordenOps.push(opKey);
+            ordenGrupos.push(claveGrupo);
+            if(opsConGrupo.indexOf(opKey) === -1) opsConGrupo.push(opKey);
           }
-          grupos[opKey].total += (r.cantidad || 0);
-          grupos[opKey].merma += (r.merma || 0);
+          grupos[claveGrupo].total += (r.cantidad || 0);
+          grupos[claveGrupo].merma += (r.merma || 0);
         });
 
-        ordenOps.forEach(function(opKey){
-          var g = grupos[opKey];
+        ordenGrupos.forEach(function(claveGrupo){
+          var g = grupos[claveGrupo];
           var match = buscarEnCatalogo(g.op);
           var prodDesc = g.descripcion || (match ? match.descripcion : "");
           filas.push({
@@ -1450,7 +1454,7 @@
 
         // Si la OP actual de la máquina cambió y todavía no tiene registros
         // propios, igual debe aparecer (en 0) para no perderla del reporte.
-        if(t.op && ordenOps.indexOf(t.op) === -1){
+        if(t.op && opsConGrupo.indexOf(t.op) === -1){
           var matchActual = buscarEnCatalogo(t.op);
           filas.push({
             maquina: m.nombre,
@@ -2484,31 +2488,35 @@
         return;
       }
       var grupos = {};
-      var ordenOps = [];
+      var ordenGrupos = [];
+      var opsConGrupo = [];
       t.registros.forEach(function(r){
         var opKey = r.op || t.op || "";
-        if(!grupos[opKey]){
+        var descKey = r.descripcion || "";
+        var claveGrupo = opKey + "||" + descKey;
+        if(!grupos[claveGrupo]){
           var matchG = buscarEnCatalogo(opKey);
-          grupos[opKey] = {
+          grupos[claveGrupo] = {
             op: opKey,
-            descripcion: r.descripcion || (matchG ? resolverModelo(matchG, t.modeloIdx).descripcion : ""),
+            descripcion: descKey || (matchG ? resolverModelo(matchG, t.modeloIdx).descripcion : ""),
             total: 0,
             merma: 0
           };
-          ordenOps.push(opKey);
+          ordenGrupos.push(claveGrupo);
+          if(opsConGrupo.indexOf(opKey) === -1) opsConGrupo.push(opKey);
         }
-        grupos[opKey].total += (r.cantidad || 0);
-        grupos[opKey].merma += (r.merma || 0);
+        grupos[claveGrupo].total += (r.cantidad || 0);
+        grupos[claveGrupo].merma += (r.merma || 0);
       });
       l.push("• " + m.nombre + ":");
-      ordenOps.forEach(function(opKey){
-        var g = grupos[opKey];
+      ordenGrupos.forEach(function(claveGrupo){
+        var g = grupos[claveGrupo];
         var opTxt = g.op ? g.op : "sin OP asignada";
         var descTxt = g.descripcion ? " — " + g.descripcion : "";
         var mermaTxt = g.merma > 0 ? " (merma " + g.merma + ")" : "";
         l.push("   ↳ " + opTxt + descTxt + " (" + g.total + " u)" + mermaTxt);
       });
-      if(t.op && ordenOps.indexOf(t.op) === -1){
+      if(t.op && opsConGrupo.indexOf(t.op) === -1){
         var matchActual = buscarEnCatalogo(t.op);
         var descActual = matchActual ? resolverModelo(matchActual, t.modeloIdx).descripcion : "";
         l.push("   ↳ " + t.op + (descActual ? " — " + descActual : "") + " (0 u)");

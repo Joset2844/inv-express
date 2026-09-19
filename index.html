@@ -295,6 +295,8 @@
         <div class="suggest-box hidden" id="suggestBox"></div>
       </div>
 
+      <div id="modeloChipsInventario" class="hidden" style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 14px;"></div>
+
       <div class="field">
         <label>Descripción</label>
         <input type="text" id="descInput" placeholder="Se autocompleta con la OP" />
@@ -773,6 +775,7 @@
       observacionInput = $("observacionInput"),
       unidadesInput = $("unidadesInput"), cajasInput = $("cajasInput"),
       totalForm = $("totalForm"), suggestBox = $("suggestBox"), fieldOp = $("fieldOp"),
+      modeloChipsInventario = $("modeloChipsInventario"),
       checkIcon = $("checkIcon"), counts = $("counts"), countsInventario = $("countsInventario"), footerInfo = $("footerInfo"),
       btnExportar = $("btnExportar"), emptyCatalog = $("emptyCatalog"),
       listaContainer = $("listaContainer"), odometer = $("odometer"),
@@ -1001,8 +1004,8 @@
   $("btnImport2").addEventListener("click", function(){ $("fileInput").click(); });
 
   // ---------- actualizar catálogo desde Google Sheets ----------
-  var STORAGE_URL_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVxCxG3XBMgSSedTqw7xWb7s7qxbYB3ZavS8MP9bx2lrwkzlK8oNQRSoFLw_sjjY68b1V0vNUaCb7B/pub?gid=0&single=true&output=csv";
-  var STORAGE_URL_SHEETS_MODELOS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVxCxG3XBMgSSedTqw7xWb7s7qxbYB3ZavS8MP9bx2lrwkzlK8oNQRSoFLw_sjjY68b1V0vNUaCb7B/pub?gid=667317961&single=true&output=csv";
+  var STORAGE_URL_SHEETS = "inventario_url_sheets_catalogo";
+  var STORAGE_URL_SHEETS_MODELOS = "inventario_url_sheets_modelos";
 
   // Links por defecto: cualquier persona que use la app puede presionar
   // directamente "Actualizar catálogo" sin configurar nada primero.
@@ -1090,6 +1093,48 @@
   });
 
   // ---------- autocompletar OP ----------
+  var modeloSeleccionadoInventario = -1;
+
+  function renderChipsModeloInventario(match){
+    modeloChipsInventario.innerHTML = "";
+    if(!match || !match.modelos || match.modelos.length <= 1){
+      modeloChipsInventario.classList.add("hidden");
+      return;
+    }
+    function crearChip(label, idx){
+      var chip = document.createElement("button");
+      chip.type = "button";
+      chip.textContent = label;
+      chip.style.cssText = "padding:5px 10px;border-radius:14px;border:1px solid var(--border-input);font-size:.68rem;font-weight:600;cursor:pointer;background:var(--panel-alt);color:var(--muted);";
+      function pintar(){
+        var activo = (modeloSeleccionadoInventario === idx);
+        chip.style.background = activo ? "var(--amber)" : "var(--panel-alt)";
+        chip.style.color = activo ? "#12161F" : "var(--muted)";
+        chip.style.borderColor = activo ? "var(--amber)" : "var(--border-input)";
+      }
+      pintar();
+      chip.addEventListener("click", function(){
+        modeloSeleccionadoInventario = idx;
+        descInput.value = resolverModelo(match, idx).descripcion;
+        renderChipsModeloInventario(match);
+      });
+      return chip;
+    }
+    modeloChipsInventario.appendChild(crearChip("Total (todos)", -1));
+    match.modelos.forEach(function(mo, idx){
+      modeloChipsInventario.appendChild(crearChip(mo.descripcion || ("Modelo " + (idx+1)), idx));
+    });
+    modeloChipsInventario.classList.remove("hidden");
+  }
+
+  function aplicarMatchInventario(match){
+    modeloSeleccionadoInventario = -1;
+    descInput.value = resolverModelo(match, modeloSeleccionadoInventario).descripcion;
+    clienteInput.value = match.cliente;
+    renderChipsModeloInventario(match);
+    setOpEncontrada(true);
+  }
+
   function renderSugerencias(query){
     var q = query.trim().toLowerCase();
     if(!q){ suggestBox.classList.add("hidden"); suggestBox.innerHTML=""; return; }
@@ -1099,14 +1144,16 @@
     matches.forEach(function(item){
       var btn = document.createElement("button");
       btn.className = "suggest-item";
-      btn.innerHTML = '<div class="suggest-op mono">'+escapeHtml(item.op)+'</div><div class="suggest-meta">'+escapeHtml(item.descripcion)+' · '+escapeHtml(item.cliente)+'</div>';
+      btn.innerHTML = '<div class="suggest-op mono">'+escapeHtml(item.op)+'</div><div class="suggest-meta">'+escapeHtml(descripcionCorta(item))+' · '+escapeHtml(item.cliente)+'</div>';
+      function seleccionar(){
+        opInput.value = item.op;
+        aplicarMatchInventario(item);
+        suggestBox.classList.add("hidden");
+      }
+      btn.addEventListener("touchstart", seleccionar, {passive:true});
       btn.addEventListener("mousedown", function(ev){
         ev.preventDefault();
-        opInput.value = item.op;
-        descInput.value = item.descripcion;
-        clienteInput.value = item.cliente;
-        setOpEncontrada(true);
-        suggestBox.classList.add("hidden");
+        seleccionar();
       });
       suggestBox.appendChild(btn);
     });
@@ -1124,10 +1171,10 @@
     renderSugerencias(v);
     var match = catalogo.find(function(c){ return c.op.toLowerCase() === v.trim().toLowerCase(); });
     if(match){
-      descInput.value = match.descripcion;
-      clienteInput.value = match.cliente;
-      setOpEncontrada(true);
+      aplicarMatchInventario(match);
     } else {
+      modeloSeleccionadoInventario = -1;
+      renderChipsModeloInventario(null);
       setOpEncontrada(false);
     }
   });
@@ -1146,6 +1193,8 @@
     opInput.value = ""; descInput.value = ""; clienteInput.value = "";
     observacionInput.value = "";
     unidadesInput.value = ""; cajasInput.value = "";
+    modeloSeleccionadoInventario = -1;
+    renderChipsModeloInventario(null);
     setOpEncontrada(false);
     actualizarTotalForm();
     opInput.focus();
@@ -1156,10 +1205,13 @@
     if(!unidadesInput.value || !cajasInput.value){ mostrarToast("error","Completa unidades x caja y cantidad de cajas"); return; }
     var u = parseInt(unidadesInput.value,10);
     var c = parseInt(cajasInput.value,10);
+    var matchActual = buscarEnCatalogo(opInput.value);
+    var sapActual = matchActual ? resolverModelo(matchActual, modeloSeleccionadoInventario).sap : "";
     var item = {
       id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
       op: opInput.value.trim(),
       descripcion: descInput.value.trim(),
+      sap: sapActual || "",
       cliente: clienteInput.value.trim(),
       observacion: observacionInput.value.trim(),
       tipoEmpaque: tipoEmpaqueSeleccionado,
@@ -1351,11 +1403,12 @@
     var mapa = {};
     var orden = [];
     items.forEach(function(item){
-      var key = item.op + "||" + item.tipoEmpaque + "||" + item.unidadesXCaja;
+      var key = item.op + "||" + item.descripcion + "||" + item.tipoEmpaque + "||" + item.unidadesXCaja;
       if(!mapa[key]){
         mapa[key] = {
           op: item.op,
           descripcion: item.descripcion,
+          sap: item.sap || "",
           cliente: item.cliente,
           tipoEmpaque: item.tipoEmpaque,
           unidadesXCaja: item.unidadesXCaja,
@@ -1389,7 +1442,7 @@
           "OP": i.op,
           "Descripción": i.descripcion,
           "Cliente": i.cliente,
-          "SAP": match && match.sap ? match.sap : "",
+          "SAP": i.sap || (match && match.sap ? match.sap : ""),
           "Empaque": et.singular.charAt(0).toUpperCase() + et.singular.slice(1),
           "Unidades x empaque": i.unidadesXCaja,
           "Cantidad de empaques": i.cantidadCajas,

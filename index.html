@@ -1001,15 +1001,21 @@
   $("btnImport2").addEventListener("click", function(){ $("fileInput").click(); });
 
   // ---------- actualizar catálogo desde Google Sheets ----------
-  var STORAGE_URL_SHEETS = "inventario_url_sheets_catalogo";
-  var STORAGE_URL_SHEETS_MODELOS = "inventario_url_sheets_modelos";
+  var STORAGE_URL_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVxCxG3XBMgSSedTqw7xWb7s7qxbYB3ZavS8MP9bx2lrwkzlK8oNQRSoFLw_sjjY68b1V0vNUaCb7B/pub?gid=0&single=true&output=csv";
+  var STORAGE_URL_SHEETS_MODELOS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVxCxG3XBMgSSedTqw7xWb7s7qxbYB3ZavS8MP9bx2lrwkzlK8oNQRSoFLw_sjjY68b1V0vNUaCb7B/pub?gid=667317961&single=true&output=csv";
+
+  // Links por defecto: cualquier persona que use la app puede presionar
+  // directamente "Actualizar catálogo" sin configurar nada primero.
+  // Doble toque sobre el botón permite cambiarlos por otros si hace falta.
+  var DEFAULT_URL_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVxCxG3XBMgSSedTqw7xWb7s7qxbYB3ZavS8MP9bx2lrwkzlK8oNQRSoFLw_sjjY68b1V0vNUaCb7B/pub?gid=0&single=true&output=csv";
+  var DEFAULT_URL_SHEETS_MODELOS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVxCxG3XBMgSSedTqw7xWb7s7qxbYB3ZavS8MP9bx2lrwkzlK8oNQRSoFLw_sjjY68b1V0vNUaCb7B/pub?gid=667317961&single=true&output=csv";
 
   function pedirUrlSheets(){
     var actualPrincipal = "";
     var actualModelos = "";
     try{
-      actualPrincipal = localStorage.getItem(STORAGE_URL_SHEETS) || "";
-      actualModelos = localStorage.getItem(STORAGE_URL_SHEETS_MODELOS) || "";
+      actualPrincipal = localStorage.getItem(STORAGE_URL_SHEETS) || DEFAULT_URL_SHEETS;
+      actualModelos = localStorage.getItem(STORAGE_URL_SHEETS_MODELOS) || DEFAULT_URL_SHEETS_MODELOS;
     }catch(e){}
 
     var nuevaPrincipal = prompt("Link de la hoja PRINCIPAL (catálogo, publicada como CSV):", actualPrincipal);
@@ -1033,13 +1039,11 @@
   $("btnActualizarPC").addEventListener("click", function(){
     var urlPrincipal = "", urlModelos = "";
     try{
-      urlPrincipal = localStorage.getItem(STORAGE_URL_SHEETS) || "";
-      urlModelos = localStorage.getItem(STORAGE_URL_SHEETS_MODELOS) || "";
-    }catch(e){}
-    if(!urlPrincipal){
-      urlPrincipal = pedirUrlSheets();
-      if(!urlPrincipal) return;
-      try{ urlModelos = localStorage.getItem(STORAGE_URL_SHEETS_MODELOS) || ""; }catch(e){}
+      urlPrincipal = localStorage.getItem(STORAGE_URL_SHEETS) || DEFAULT_URL_SHEETS;
+      urlModelos = localStorage.getItem(STORAGE_URL_SHEETS_MODELOS) || DEFAULT_URL_SHEETS_MODELOS;
+    }catch(e){
+      urlPrincipal = DEFAULT_URL_SHEETS;
+      urlModelos = DEFAULT_URL_SHEETS_MODELOS;
     }
 
     var btn = $("btnActualizarPC");
@@ -1300,13 +1304,31 @@
       return;
     }
     var resultados = !q ? catalogo : catalogo.filter(function(c){
-      return c.op.toLowerCase().indexOf(q) !== -1 ||
-             c.descripcion.toLowerCase().indexOf(q) !== -1 ||
-             c.cliente.toLowerCase().indexOf(q) !== -1;
+      if(c.op.toLowerCase().indexOf(q) !== -1 ||
+         c.descripcion.toLowerCase().indexOf(q) !== -1 ||
+         c.cliente.toLowerCase().indexOf(q) !== -1) return true;
+      if(c.modelos && c.modelos.length > 1){
+        return c.modelos.some(function(mo){
+          return (mo.descripcion||"").toLowerCase().indexOf(q) !== -1 ||
+                 (mo.sap||"").toLowerCase().indexOf(q) !== -1;
+        });
+      }
+      return false;
     });
     var html = '<div class="table-wrap"><table><thead><tr><th>OP</th><th>Descripción</th><th>Cliente</th><th>Cant. total</th><th>SAP</th></tr></thead><tbody>';
     resultados.slice(0,200).forEach(function(r){
-      html += '<tr><td class="mono" style="font-weight:600;color:var(--amber-text);">'+escapeHtml(r.op)+'</td><td>'+escapeHtml(r.descripcion)+'</td><td style="color:var(--muted-2);">'+escapeHtml(r.cliente)+'</td><td class="mono" style="color:var(--muted-2);">'+(r.cantidadTotal ? escapeHtml(r.cantidadTotal) : "—")+'</td><td class="mono" style="color:var(--muted-2);">'+(r.sap ? escapeHtml(r.sap) : "—")+'</td></tr>';
+      html += '<tr><td class="mono" style="font-weight:600;color:var(--amber-text);">'+escapeHtml(r.op)+'</td><td>'+escapeHtml(r.descripcion)+'</td><td style="color:var(--muted-2);">'+escapeHtml(r.cliente)+'</td><td class="mono" style="color:var(--muted-2);">'+(r.cantidadTotal ? escapeHtml(String(r.cantidadTotal)) : "—")+'</td><td class="mono" style="color:var(--muted-2);">'+(r.sap ? escapeHtml(r.sap) : "—")+'</td></tr>';
+      if(r.modelos && r.modelos.length > 1){
+        html += '<tr><td></td><td colspan="4" style="padding-top:0;padding-bottom:10px;">';
+        html += '<ul style="margin:0;padding-left:18px;list-style:disc;font-size:.78rem;color:var(--muted-2);">';
+        r.modelos.forEach(function(mo){
+          html += '<li style="margin-bottom:2px;"><span style="color:var(--text);">'+escapeHtml(mo.descripcion)+'</span>'
+                + (mo.sap ? ' · SAP <span class="mono">'+escapeHtml(mo.sap)+'</span>' : '')
+                + (mo.cantidadTotal ? ' · Cant. <span class="mono">'+escapeHtml(String(mo.cantidadTotal))+'</span>' : '')
+                + '</li>';
+        });
+        html += '</ul></td></tr>';
+      }
     });
     html += '</tbody></table>';
     if(resultados.length === 0){

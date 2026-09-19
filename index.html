@@ -925,8 +925,10 @@
     return { mapaOps: mapaOps, ordenOps: ordenOps };
   }
 
-  function procesarWorkbook(wb){
-    var sheetPrincipal = wb.Sheets[wb.SheetNames[0]];
+  // Combina la hoja principal (catálogo) con una hoja de modelos opcional
+  // (puede venir del mismo Excel o de dos hojas de Google Sheets distintas)
+  // y deja el resultado guardado en `catalogo`.
+  function combinarYGuardarCatalogo(sheetPrincipal, sheetModelos){
     var principal = parsearHojaCatalogo(sheetPrincipal);
     if(!principal){
       mostrarToast("error","Debe tener columnas OP, Descripción y Cliente");
@@ -936,12 +938,11 @@
     var mapaFinal = principal.mapaOps;
     var ordenFinal = principal.ordenOps.slice();
 
-    // Segunda hoja opcional: OP con varios modelos (columnas OP, Modelo,
+    // Hoja de modelos opcional: OP con varios modelos (columnas OP, Modelo,
     // Cantidad, Código SAP). Si una OP aparece ahí, reemplaza por completo
-    // lo que traía de la primera hoja, combinando la descripción base con
+    // lo que traía de la hoja principal, combinando la descripción base con
     // el texto del modelo.
-    if(wb.SheetNames.length > 1){
-      var sheetModelos = wb.Sheets[wb.SheetNames[1]];
+    if(sheetModelos){
       var modelos = parsearHojaModelos(sheetModelos, principal.mapaOps);
       if(modelos){
         modelos.ordenOps.forEach(function(op){
@@ -970,6 +971,12 @@
     return nuevo.length;
   }
 
+  function procesarWorkbook(wb){
+    var sheetPrincipal = wb.Sheets[wb.SheetNames[0]];
+    var sheetModelos = wb.SheetNames.length > 1 ? wb.Sheets[wb.SheetNames[1]] : null;
+    return combinarYGuardarCatalogo(sheetPrincipal, sheetModelos);
+  }
+
   function handleFile(file){
     if(!file) return;
     var reader = new FileReader();
@@ -995,40 +1002,78 @@
 
   // ---------- actualizar catálogo desde Google Sheets ----------
   var STORAGE_URL_SHEETS = "inventario_url_sheets_catalogo";
+  var STORAGE_URL_SHEETS_MODELOS = "inventario_url_sheets_modelos";
 
   function pedirUrlSheets(){
-    var actual = "";
-    try{ actual = localStorage.getItem(STORAGE_URL_SHEETS) || ""; }catch(e){}
-    var nueva = prompt("Link de la hoja de Google Sheets (publicada como CSV):", actual);
-    if(nueva === null) return null;
-    nueva = nueva.trim();
-    if(nueva){ try{ localStorage.setItem(STORAGE_URL_SHEETS, nueva); }catch(e){} }
-    return nueva;
+    var actualPrincipal = "";
+    var actualModelos = "";
+    try{
+      actualPrincipal = localStorage.getItem(STORAGE_URL_SHEETS) || "";
+      actualModelos = localStorage.getItem(STORAGE_URL_SHEETS_MODELOS) || "";
+    }catch(e){}
+
+    var nuevaPrincipal = prompt("Link de la hoja PRINCIPAL (catálogo, publicada como CSV):", actualPrincipal);
+    if(nuevaPrincipal === null) return null;
+    nuevaPrincipal = nuevaPrincipal.trim();
+    if(!nuevaPrincipal){ mostrarToast("error","La hoja principal es obligatoria"); return null; }
+
+    var nuevaModelos = prompt("Link de la hoja de MODELOS (opcional, deja vacío si no aplica):", actualModelos);
+    if(nuevaModelos === null) nuevaModelos = actualModelos;
+    nuevaModelos = nuevaModelos.trim();
+
+    try{
+      localStorage.setItem(STORAGE_URL_SHEETS, nuevaPrincipal);
+      if(nuevaModelos) localStorage.setItem(STORAGE_URL_SHEETS_MODELOS, nuevaModelos);
+      else localStorage.removeItem(STORAGE_URL_SHEETS_MODELOS);
+    }catch(e){}
+
+    return nuevaPrincipal;
   }
 
   $("btnActualizarPC").addEventListener("click", function(){
-    var url = "";
-    try{ url = localStorage.getItem(STORAGE_URL_SHEETS) || ""; }catch(e){}
-    if(!url){
-      url = pedirUrlSheets();
-      if(!url) return;
+    var urlPrincipal = "", urlModelos = "";
+    try{
+      urlPrincipal = localStorage.getItem(STORAGE_URL_SHEETS) || "";
+      urlModelos = localStorage.getItem(STORAGE_URL_SHEETS_MODELOS) || "";
+    }catch(e){}
+    if(!urlPrincipal){
+      urlPrincipal = pedirUrlSheets();
+      if(!urlPrincipal) return;
+      try{ urlModelos = localStorage.getItem(STORAGE_URL_SHEETS_MODELOS) || ""; }catch(e){}
     }
+
     var btn = $("btnActualizarPC");
     var textoOriginal = btn.querySelector("span").textContent;
     btn.disabled = true;
     btn.querySelector("span").textContent = "Actualizando...";
-    fetch(url, { cache: "no-store" })
-      .then(function(resp){
-        if(!resp.ok) throw new Error("HTTP " + resp.status);
-        return resp.text();
-      })
-      .then(function(csvTexto){
-        var wb = XLSX.read(csvTexto, {type:"string"});
-        var n = procesarWorkbook(wb);
-        if(n !== false) mostrarToast("ok","Catálogo actualizado: " + n + " OP");
+
+    var fetchPrincipal = fetch(urlPrincipal, { cache: "no-store" }).then(function(resp){
+      if(!resp.ok) throw new Error("HTTP " + resp.status + " (hoja principal)");
+      return resp.text();
+    });
+    var fetchModelos = urlModelos
+      ? fetch(urlModelos, { cache: "no-store" }).then(function(resp){
+          if(!resp.ok) throw new Error("HTTP " + resp.status + " (hoja de modelos)");
+          return resp.text();
+        })
+      : Promise.resolve(null);
+
+    Promise.all([fetchPrincipal, fetchModelos])
+      .then(function(resultados){
+        var csvPrincipal = resultados[0];
+        var csvModelos = resultados[1];
+        var wbPrincipal = XLSX.read(csvPrincipal, {type:"string"});
+        var sheetPrincipal = wbPrincipal.Sheets[wbPrincipal.SheetNames[0]];
+        var sheetModelos = null;
+        if(csvModelos){
+          var wbModelos = XLSX.read(csvModelos, {type:"string"});
+          sheetModelos = wbModelos.Sheets[wbModelos.SheetNames[0]];
+        }
+        var n = combinarYGuardarCatalogo(sheetPrincipal, sheetModelos);
+        if(n !== false) mostrarToast("ok","Catálogo actualizado: " + n + " OP" + (sheetModelos ? " (con modelos)" : ""));
       })
       .catch(function(err){
-        mostrarToast("error","No se pudo descargar el catálogo. Revisa el link.");
+        mostrarToast("error","No se pudo descargar el catálogo. Revisa los links.");
       })
       .finally(function(){
         btn.disabled = false;

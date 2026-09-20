@@ -423,6 +423,10 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <span>Importar códigos (Excel)</span>
       </button>
+      <button id="btnActualizarMaquinas" class="btn-import" style="background:var(--panel-alt);color:var(--text);border:1px solid var(--border-input);font-weight:600;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18-6M22 12.5a10 10 0 0 1-18 6"/></svg>
+        <span>Actualizar máquinas</span>
+      </button>
       <input type="file" id="fileInputMaquinas" accept=".xlsx,.xls,.csv" class="hidden" />
       <span style="font-size:.68rem;color:var(--muted-2);">Columnas: MAQUINA, CODIGO</span>
     </div>
@@ -1877,6 +1881,52 @@
       }
     };
     reader.readAsArrayBuffer(file);
+  });
+
+  // ---------- actualizar máquinas desde Google Sheets ----------
+  var STORAGE_URL_SHEETS_MAQUINAS = "inventario_url_sheets_maquinas";
+  var DEFAULT_URL_SHEETS_MAQUINAS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVxCxG3XBMgSSedTqw7xWb7s7qxbYB3ZavS8MP9bx2lrwkzlK8oNQRSoFLw_sjjY68b1V0vNUaCb7B/pub?gid=770560989&single=true&output=csv";
+
+  function pedirUrlSheetsMaquinas(){
+    var actual = "";
+    try{ actual = localStorage.getItem(STORAGE_URL_SHEETS_MAQUINAS) || DEFAULT_URL_SHEETS_MAQUINAS; }catch(e){}
+    var nueva = prompt("Link de la hoja de MÁQUINAS (columnas MAQUINA, CODIGO, publicada como CSV):", actual);
+    if(nueva === null) return null;
+    nueva = nueva.trim();
+    if(!nueva){ mostrarToast("error","El link es obligatorio"); return null; }
+    try{ localStorage.setItem(STORAGE_URL_SHEETS_MAQUINAS, nueva); }catch(e){}
+    return nueva;
+  }
+
+  $("btnActualizarMaquinas").addEventListener("click", function(){
+    var url = "";
+    try{ url = localStorage.getItem(STORAGE_URL_SHEETS_MAQUINAS) || DEFAULT_URL_SHEETS_MAQUINAS; }catch(e){
+      url = DEFAULT_URL_SHEETS_MAQUINAS;
+    }
+    var btn = $("btnActualizarMaquinas");
+    var textoOriginal = btn.querySelector("span").textContent;
+    btn.disabled = true;
+    btn.querySelector("span").textContent = "Actualizando...";
+    fetch(url, { cache: "no-store" })
+      .then(function(resp){
+        if(!resp.ok) throw new Error("HTTP " + resp.status);
+        return resp.text();
+      })
+      .then(function(csvTexto){
+        var wb = XLSX.read(csvTexto, {type:"string"});
+        importarCodigosMaquinas(wb);
+      })
+      .catch(function(){
+        mostrarToast("error","No se pudo descargar la lista de máquinas. Revisa el link.");
+      })
+      .finally(function(){
+        btn.disabled = false;
+        btn.querySelector("span").textContent = textoOriginal;
+      });
+  });
+
+  $("btnActualizarMaquinas").addEventListener("dblclick", function(){
+    pedirUrlSheetsMaquinas();
   });
 
   function buscarEnCatalogo(op){

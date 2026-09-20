@@ -1713,6 +1713,11 @@
     return nueva;
   }
 
+  function urlConsultaAppScript(url, fecha, tipo){
+    var sep = url.indexOf("?") === -1 ? "?" : "&";
+    return url + sep + "fecha=" + encodeURIComponent(fecha) + "&tipo=" + encodeURIComponent(tipo);
+  }
+
   $("btnEnviarSheets").addEventListener("click", function(){
     var filas = filasTurnoParaExcel();
     if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para enviar"); return; }
@@ -1722,30 +1727,60 @@
       url = pedirUrlAppScript();
       if(!url) return;
     }
+
+    var fechaTxt = formatearFechaTurno();
+    var etiquetaTxt = etiquetaTurno();
     var btn = $("btnEnviarSheets");
     var textoOriginal = btn.textContent.trim();
-    btn.disabled = true;
-    btn.innerHTML = btn.innerHTML.replace(textoOriginal, "Enviando...");
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ fecha: formatearFechaTurno(), tipo: metaTurno.tipo, filas: filas })
-    })
-      .then(function(resp){
-        if(!resp.ok) throw new Error("HTTP " + resp.status);
-        return resp.json();
+
+    function enviarDefinitivo(){
+      btn.disabled = true;
+      btn.innerHTML = btn.innerHTML.replace(textoOriginal, "Enviando...");
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ fecha: fechaTxt, tipo: metaTurno.tipo, filas: filas })
       })
+        .then(function(resp){
+          if(!resp.ok) throw new Error("HTTP " + resp.status);
+          return resp.json();
+        })
+        .then(function(data){
+          if(data && data.ok){
+            mostrarToast("ok", "Guardado en \"" + data.hoja + "\" (" + data.filas + " filas)");
+          } else {
+            mostrarToast("error", (data && data.error) ? data.error : "Google Sheets no confirmó el guardado");
+          }
+        })
+        .catch(function(){ mostrarToast("error","No se pudo enviar a Sheets. Revisa el link."); })
+        .finally(function(){
+          btn.disabled = false;
+          btn.innerHTML = btn.innerHTML.replace("Enviando...", textoOriginal);
+        });
+    }
+
+    // Antes de enviar, consulta si ya existe una hoja para esa fecha/turno
+    // (para no sobrescribir por error de fecha o turno mal seleccionados).
+    // Si la consulta falla (link viejo sin esta función, sin red, etc.),
+    // igual se muestra una confirmación básica en vez de bloquear el envío.
+    fetch(urlConsultaAppScript(url, fechaTxt, metaTurno.tipo), { cache: "no-store" })
+      .then(function(resp){ return resp.json(); })
       .then(function(data){
-        if(data && data.ok){
-          mostrarToast("ok", "Guardado en \"" + data.hoja + "\" (" + data.filas + " filas)");
+        var mensaje;
+        if(data && data.ok && data.existe){
+          mensaje = "Ya existe un envío guardado para:\n\n" + data.hoja + " (" + data.filasAprox + " filas)\n\n"
+            + "Vas a REEMPLAZARLO con los datos actuales (" + filas.length + " filas).\n\n"
+            + "¿Confirmas que la fecha y el turno son correctos?";
         } else {
-          mostrarToast("error", (data && data.error) ? data.error : "Google Sheets no confirmó el guardado");
+          mensaje = "Vas a enviar el turno:\n\n" + fechaTxt + " - " + etiquetaTxt + " (" + filas.length + " filas)\n\n"
+            + "¿Confirmas que la fecha y el turno son correctos?";
         }
+        if(confirm(mensaje)) enviarDefinitivo();
       })
-      .catch(function(){ mostrarToast("error","No se pudo enviar a Sheets. Revisa el link."); })
-      .finally(function(){
-        btn.disabled = false;
-        btn.innerHTML = btn.innerHTML.replace("Enviando...", textoOriginal);
+      .catch(function(){
+        var mensaje = "Vas a enviar el turno:\n\n" + fechaTxt + " - " + etiquetaTxt + " (" + filas.length + " filas)\n\n"
+          + "¿Confirmas que la fecha y el turno son correctos?";
+        if(confirm(mensaje)) enviarDefinitivo();
       });
   });
 

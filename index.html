@@ -1165,7 +1165,10 @@
         aplicarMatchInventario(item);
         suggestBox.classList.add("hidden");
       }
-      btn.addEventListener("touchstart", seleccionar, {passive:true});
+      btn.addEventListener("touchstart", function(ev){
+        ev.preventDefault();
+        seleccionar();
+      }, {passive:false});
       btn.addEventListener("mousedown", function(ev){
         ev.preventDefault();
         seleccionar();
@@ -2406,8 +2409,14 @@
           btn.innerHTML = '<div class="suggest-op mono">'+escapeHtml(m.op)+'</div><div class="suggest-meta">'+escapeHtml(descripcionCorta(m))+' · '+escapeHtml(m.cliente)+'</div>';
           // touchstart dispara ANTES que el blur del input en cualquier orden de
           // eventos en móvil, así que es la señal más confiable para bloquear
-          // la sobrescritura por blur. mousedown queda como respaldo en desktop.
-          btn.addEventListener("touchstart", function(){ seleccionarSugerencia(m.op); }, {passive:true});
+          // la sobrescritura por blur. Se cancela el evento (preventDefault)
+          // para que el navegador no sintetice un "click" fantasma después,
+          // que de otro modo aterriza en lo que haya quedado en esa misma
+          // posición una vez la tarjeta se colapsa (abriendo otra tarjeta).
+          btn.addEventListener("touchstart", function(ev){
+            ev.preventDefault();
+            seleccionarSugerencia(m.op);
+          }, {passive:false});
           btn.addEventListener("mousedown", function(ev){
             ev.preventDefault();
             seleccionarSugerencia(m.op);

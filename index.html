@@ -418,6 +418,14 @@
       <button id="btnAgregarMaquina" style="background:var(--amber);color:#12161F;border:none;padding:9px 16px;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">Agregar</button>
     </div>
     <p style="font-size:.72rem;color:var(--muted-2);margin:6px 0 0;">Puedes agregar varias separadas por coma o una por línea.</p>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-input);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <button id="btnImportarMaquinas" class="btn-import" style="background:var(--panel-alt);color:var(--text);border:1px solid var(--border-input);font-weight:600;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Importar códigos (Excel)</span>
+      </button>
+      <input type="file" id="fileInputMaquinas" accept=".xlsx,.xls,.csv" class="hidden" />
+      <span style="font-size:.68rem;color:var(--muted-2);">Columnas: MAQUINA, CODIGO</span>
+    </div>
   </div>
 
   <div class="wrap tabs" id="filtroAreaMaquinas" style="margin-bottom:12px;">
@@ -673,6 +681,7 @@
       }
       if(typeof m.area === "undefined"){ m.area = ""; migroActiva = true; }
       if(typeof m.codigo === "undefined"){ m.codigo = ""; migroActiva = true; }
+      if(typeof m.codigoBloqueado === "undefined"){ m.codigoBloqueado = false; migroActiva = true; }
     });
     if(migroActiva) guardarMaquinas();
 
@@ -1800,13 +1809,74 @@
         nombre: nombre,
         activa: false,
         area: "",
-        codigo: ""
+        codigo: "",
+        codigoBloqueado: false
       });
     });
     guardarMaquinas();
     nombreMaquinaInput.value = "";
     renderMaquinas();
     mostrarToast("ok", nombres.length > 1 ? nombres.length + " máquinas agregadas" : "Máquina agregada");
+  });
+
+  // Importar códigos de máquina desde un Excel de 2 columnas: MAQUINA, CODIGO.
+  // Empareja por nombre (sin importar mayúsculas/espacios); si la máquina no
+  // existe todavía, la crea. El código queda bloqueado para editarlo a mano
+  // y evitar sobrescrituras por error; solo se actualiza volviendo a importar.
+  function importarCodigosMaquinas(wb){
+    var sheet = wb.Sheets[wb.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:""});
+    if(rows.length < 2){ mostrarToast("error","El archivo no tiene datos"); return; }
+    var headers = rows[0].map(normalizar);
+    var idxMaquina = headers.findIndex(function(h){ return h.indexOf("maquina") !== -1; });
+    var idxCodigo = headers.findIndex(function(h){ return h.indexOf("codigo") !== -1; });
+    if(idxMaquina === -1 || idxCodigo === -1){
+      mostrarToast("error","Debe tener columnas MAQUINA y CODIGO");
+      return;
+    }
+    var actualizadas = 0, creadas = 0;
+    rows.slice(1).forEach(function(r){
+      var nombre = String(r[idxMaquina]).trim();
+      var codigo = String(r[idxCodigo]).trim();
+      if(!nombre) return;
+      var existente = maquinas.find(function(m){ return m.nombre.trim().toLowerCase() === nombre.toLowerCase(); });
+      if(existente){
+        existente.codigo = codigo;
+        existente.codigoBloqueado = true;
+        actualizadas++;
+      } else {
+        maquinas.push({
+          id: Date.now()+"-"+Math.random().toString(36).slice(2,7)+"-"+Math.random().toString(36).slice(2,5),
+          nombre: nombre,
+          activa: false,
+          area: "",
+          codigo: codigo,
+          codigoBloqueado: true
+        });
+        creadas++;
+      }
+    });
+    guardarMaquinas();
+    renderMaquinas();
+    mostrarToast("ok", actualizadas + " actualizadas, " + creadas + " creadas");
+  }
+
+  $("btnImportarMaquinas").addEventListener("click", function(){ $("fileInputMaquinas").click(); });
+  $("fileInputMaquinas").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    e.target.value = "";
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      try{
+        var data = new Uint8Array(evt.target.result);
+        var wb = XLSX.read(data, {type:"array"});
+        importarCodigosMaquinas(wb);
+      }catch(err){
+        mostrarToast("error","No se pudo leer el archivo");
+      }
+    };
+    reader.readAsArrayBuffer(file);
   });
 
   function buscarEnCatalogo(op){
@@ -1851,14 +1921,38 @@
     codigoInput.className = "mono";
     codigoInput.placeholder = "Código";
     codigoInput.value = item.codigo || "";
-    codigoInput.style.cssText = "width:90px;padding:5px 8px;border-radius:14px;border:1px solid var(--border-input);font-size:.68rem;font-weight:600;outline:none;background:var(--panel-alt);color:var(--text);";
+    codigoInput.disabled = !!item.codigoBloqueado;
+    codigoInput.title = item.codigoBloqueado ? "Código importado desde Excel — bloqueado para evitar sobrescrituras. Doble toque para desbloquear." : "";
+    codigoInput.style.cssText = "width:90px;padding:5px 8px;border-radius:14px;border:1px solid var(--border-input);font-size:.68rem;font-weight:600;outline:none;background:"
+      + (item.codigoBloqueado ? "var(--dark-3)" : "var(--panel-alt)") + ";color:" + (item.codigoBloqueado ? "var(--muted-2)" : "var(--text)") + ";";
     codigoInput.addEventListener("change", function(){
       item.codigo = codigoInput.value.trim();
       guardarMaquinas();
     });
 
+    var codigoWrap = document.createElement("div");
+    codigoWrap.style.cssText = "display:flex;align-items:center;gap:4px;";
+    codigoWrap.appendChild(codigoInput);
+    if(item.codigoBloqueado){
+      var candadoIcon = document.createElement("span");
+      candadoIcon.textContent = "🔒";
+      candadoIcon.style.cssText = "font-size:.7rem;cursor:pointer;";
+      candadoIcon.title = "Código bloqueado — doble toque para desbloquear";
+      codigoWrap.appendChild(candadoIcon);
+    }
+    // El listener va en el contenedor (no en el input) porque un input
+    // deshabilitado no recibe eventos de doble clic/toque en la mayoría
+    // de navegadores.
+    codigoWrap.addEventListener("dblclick", function(){
+      if(!item.codigoBloqueado) return;
+      item.codigoBloqueado = false;
+      guardarMaquinas();
+      renderMaquinas();
+      mostrarToast("ok","Código desbloqueado para editar");
+    });
+
     izquierda.appendChild(nombreEl);
-    izquierda.appendChild(codigoInput);
+    izquierda.appendChild(codigoWrap);
 
     var derecha = document.createElement("div");
     derecha.style.cssText = "display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;";

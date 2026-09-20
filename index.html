@@ -686,6 +686,7 @@
       if(typeof m.area === "undefined"){ m.area = ""; migroActiva = true; }
       if(typeof m.codigo === "undefined"){ m.codigo = ""; migroActiva = true; }
       if(typeof m.codigoBloqueado === "undefined"){ m.codigoBloqueado = false; migroActiva = true; }
+      if(typeof m.tipoProducto === "undefined"){ m.tipoProducto = ""; migroActiva = true; }
     });
     if(migroActiva) guardarMaquinas();
 
@@ -1554,6 +1555,7 @@
         filas.push({
           maquina: m.nombre,
           codigoMaquina: m.codigo || "",
+          tipoProducto: m.tipoProducto || "",
           area: m.area || "",
           op: t.op || "",
           sap: match ? (modeloVacio.sap || "") : "",
@@ -1593,6 +1595,7 @@
           filas.push({
             maquina: m.nombre,
             codigoMaquina: m.codigo || "",
+          tipoProducto: m.tipoProducto || "",
             area: m.area || "",
             op: g.op,
             sap: g.sap || "",
@@ -1611,6 +1614,7 @@
           filas.push({
             maquina: m.nombre,
             codigoMaquina: m.codigo || "",
+          tipoProducto: m.tipoProducto || "",
             area: m.area || "",
             op: t.op,
             sap: matchActual ? (modeloActual.sap || "") : "",
@@ -1852,7 +1856,8 @@
         activa: false,
         area: "",
         codigo: "",
-        codigoBloqueado: false
+        codigoBloqueado: false,
+        tipoProducto: ""
       });
     });
     guardarMaquinas();
@@ -1893,7 +1898,8 @@
           activa: false,
           area: "",
           codigo: codigo,
-          codigoBloqueado: true
+          codigoBloqueado: true,
+          tipoProducto: ""
         });
         creadas++;
       }
@@ -2059,6 +2065,30 @@
       guardarMaquinas();
     });
 
+    var ppPtWrap = document.createElement("div");
+    ppPtWrap.style.cssText = "display:flex;gap:4px;";
+    function crearChipPpPt(valor, label){
+      var chip = document.createElement("button");
+      chip.type = "button";
+      chip.textContent = label;
+      chip.title = valor === "pt" ? "Producto Terminado — su producción sí va a \"Para Copiar\" en Sheets" : (valor === "pp" ? "Producto en Proceso — su producción NO va a \"Para Copiar\" en Sheets" : "Sin definir");
+      function pintar(){
+        var activo = (item.tipoProducto||"") === valor;
+        chip.style.cssText = "padding:5px 9px;border-radius:14px;border:1px solid " + (activo ? "var(--amber)" : "var(--border-input)")
+          + ";font-size:.68rem;font-weight:700;cursor:pointer;background:" + (activo ? "var(--amber)" : "var(--panel-alt)")
+          + ";color:" + (activo ? "#12161F" : "var(--muted)") + ";";
+      }
+      pintar();
+      chip.addEventListener("click", function(){
+        item.tipoProducto = (item.tipoProducto === valor) ? "" : valor;
+        guardarMaquinas();
+        renderMaquinas();
+      });
+      return chip;
+    }
+    ppPtWrap.appendChild(crearChipPpPt("pp","PP"));
+    ppPtWrap.appendChild(crearChipPpPt("pt","PT"));
+
     var toggle = document.createElement("button");
     toggle.type = "button";
     function pintarToggle(){
@@ -2085,6 +2115,7 @@
     });
 
     derecha.appendChild(areaSelect);
+    derecha.appendChild(ppPtWrap);
     derecha.appendChild(toggle);
     derecha.appendChild(btnDel);
     card.appendChild(izquierda);

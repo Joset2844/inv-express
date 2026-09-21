@@ -685,7 +685,7 @@
       }
       if(typeof m.area === "undefined"){ m.area = ""; migroActiva = true; }
       if(typeof m.codigo === "undefined"){ m.codigo = ""; migroActiva = true; }
-      if(typeof m.codigoBloqueado === "undefined"){ m.codigoBloqueado = false; migroActiva = true; }
+      if(typeof m.bloqueada === "undefined"){ m.bloqueada = !!m.codigoBloqueado; migroActiva = true; }
       if(typeof m.tipoProducto === "undefined"){ m.tipoProducto = ""; migroActiva = true; }
     });
     if(migroActiva) guardarMaquinas();
@@ -1856,7 +1856,7 @@
         activa: false,
         area: "",
         codigo: "",
-        codigoBloqueado: false,
+        bloqueada: false,
         tipoProducto: ""
       });
     });
@@ -1889,7 +1889,7 @@
       var existente = maquinas.find(function(m){ return m.nombre.trim().toLowerCase() === nombre.toLowerCase(); });
       if(existente){
         existente.codigo = codigo;
-        existente.codigoBloqueado = true;
+        existente.bloqueada = true;
         actualizadas++;
       } else {
         maquinas.push({
@@ -1898,7 +1898,7 @@
           activa: false,
           area: "",
           codigo: codigo,
-          codigoBloqueado: true,
+          bloqueada: true,
           tipoProducto: ""
         });
         creadas++;
@@ -2000,10 +2000,30 @@
   function crearTarjetaMaquina(item){
     var card = document.createElement("div");
     card.className = "item-card";
-    card.style.cssText = "flex-wrap:wrap;";
+    card.style.cssText = "flex-wrap:wrap;position:relative;";
+    var bloqueada = !!item.bloqueada;
+
+    // Doble toque/clic en cualquier parte de la tarjeta alterna el bloqueo
+    // (un solo candado para toda la info: nombre no editable de por sí,
+    // pero código, área, PP/PT y el estado activa/inactiva sí lo son).
+    card.addEventListener("dblclick", function(ev){
+      if(ev.target.closest("button, input, select")) return;
+      item.bloqueada = !item.bloqueada;
+      guardarMaquinas();
+      renderMaquinas();
+      mostrarToast("ok", item.bloqueada ? "Máquina bloqueada" : "Máquina desbloqueada para editar");
+    });
 
     var izquierda = document.createElement("div");
     izquierda.style.cssText = "display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
+
+    if(bloqueada){
+      var candadoIcon = document.createElement("span");
+      candadoIcon.textContent = "🔒";
+      candadoIcon.style.cssText = "font-size:.85rem;";
+      candadoIcon.title = "Tarjeta bloqueada — doble toque/clic en cualquier parte para desbloquear";
+      izquierda.appendChild(candadoIcon);
+    }
 
     var nombreEl = document.createElement("span");
     nombreEl.className = "mono";
@@ -2015,43 +2035,23 @@
     codigoInput.className = "mono";
     codigoInput.placeholder = "Código";
     codigoInput.value = item.codigo || "";
-    codigoInput.disabled = !!item.codigoBloqueado;
-    codigoInput.title = item.codigoBloqueado ? "Código importado desde Excel — bloqueado para evitar sobrescrituras. Doble toque para desbloquear." : "";
+    codigoInput.disabled = bloqueada;
+    codigoInput.title = bloqueada ? "Bloqueado — doble toque/clic en la tarjeta para desbloquear" : "";
     codigoInput.style.cssText = "width:90px;padding:5px 8px;border-radius:14px;border:1px solid var(--border-input);font-size:.68rem;font-weight:600;outline:none;background:"
-      + (item.codigoBloqueado ? "var(--dark-3)" : "var(--panel-alt)") + ";color:" + (item.codigoBloqueado ? "var(--muted-2)" : "var(--text)") + ";";
+      + (bloqueada ? "var(--dark-3)" : "var(--panel-alt)") + ";color:" + (bloqueada ? "var(--muted-2)" : "var(--text)") + ";";
     codigoInput.addEventListener("change", function(){
       item.codigo = codigoInput.value.trim();
       guardarMaquinas();
     });
 
-    var codigoWrap = document.createElement("div");
-    codigoWrap.style.cssText = "display:flex;align-items:center;gap:4px;";
-    codigoWrap.appendChild(codigoInput);
-    if(item.codigoBloqueado){
-      var candadoIcon = document.createElement("span");
-      candadoIcon.textContent = "🔒";
-      candadoIcon.style.cssText = "font-size:.7rem;cursor:pointer;";
-      candadoIcon.title = "Código bloqueado — doble toque para desbloquear";
-      codigoWrap.appendChild(candadoIcon);
-    }
-    // El listener va en el contenedor (no en el input) porque un input
-    // deshabilitado no recibe eventos de doble clic/toque en la mayoría
-    // de navegadores.
-    codigoWrap.addEventListener("dblclick", function(){
-      if(!item.codigoBloqueado) return;
-      item.codigoBloqueado = false;
-      guardarMaquinas();
-      renderMaquinas();
-      mostrarToast("ok","Código desbloqueado para editar");
-    });
-
     izquierda.appendChild(nombreEl);
-    izquierda.appendChild(codigoWrap);
+    izquierda.appendChild(codigoInput);
 
     var derecha = document.createElement("div");
     derecha.style.cssText = "display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;";
 
     var areaSelect = document.createElement("select");
+    areaSelect.disabled = bloqueada;
     areaSelect.style.cssText = "padding:5px 8px;border-radius:14px;border:1px solid var(--border-input);font-size:.68rem;font-weight:600;outline:none;background:var(--panel-alt);color:var(--muted);";
     [["","Sin área"],["vasos_envases","Vasos y Envases"],["papel_carton","Papel y Cartón"]].forEach(function(op){
       var opt = document.createElement("option");
@@ -2071,12 +2071,13 @@
       var chip = document.createElement("button");
       chip.type = "button";
       chip.textContent = label;
+      chip.disabled = bloqueada;
       chip.title = valor === "pt" ? "Producto Terminado — su producción sí va a \"Para Copiar\" en Sheets" : (valor === "pp" ? "Producto en Proceso — su producción NO va a \"Para Copiar\" en Sheets" : "Sin definir");
       function pintar(){
         var activo = (item.tipoProducto||"") === valor;
         chip.style.cssText = "padding:5px 9px;border-radius:14px;border:1px solid " + (activo ? "var(--amber)" : "var(--border-input)")
           + ";font-size:.68rem;font-weight:700;cursor:pointer;background:" + (activo ? "var(--amber)" : "var(--panel-alt)")
-          + ";color:" + (activo ? "#12161F" : "var(--muted)") + ";";
+          + ";color:" + (activo ? "#12161F" : "var(--muted)") + ";" + (bloqueada ? "opacity:.6;" : "");
       }
       pintar();
       chip.addEventListener("click", function(){
@@ -2091,12 +2092,13 @@
 
     var toggle = document.createElement("button");
     toggle.type = "button";
+    toggle.disabled = bloqueada;
     function pintarToggle(){
       toggle.textContent = item.activa ? "Activa" : "Inactiva";
       toggle.style.cssText = "padding:6px 14px;border-radius:20px;border:1px solid " +
         (item.activa ? "var(--green)" : "var(--border-input)") +
         ";font-size:.72rem;font-weight:600;cursor:pointer;background:" +
-        (item.activa ? "var(--green)" : "var(--panel-alt)") + ";color:" + (item.activa ? "#fff" : "var(--muted)") + ";";
+        (item.activa ? "var(--green)" : "var(--panel-alt)") + ";color:" + (item.activa ? "#fff" : "var(--muted)") + ";" + (bloqueada ? "opacity:.6;" : "");
     }
     pintarToggle();
     toggle.addEventListener("click", function(){
@@ -2107,6 +2109,9 @@
 
     var btnDel = document.createElement("button");
     btnDel.className = "btn-del";
+    btnDel.disabled = bloqueada;
+    btnDel.title = bloqueada ? "Bloqueado — doble toque/clic en la tarjeta para desbloquear" : "";
+    btnDel.style.opacity = bloqueada ? ".5" : "1";
     btnDel.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"/></svg>';
     btnDel.addEventListener("click", function(){
       maquinas = maquinas.filter(function(m){ return m.id !== item.id; });

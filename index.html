@@ -646,6 +646,10 @@
         item.modelos = [{ descripcion: item.descripcion || "", sap: item.sap || "", cantidadTotal: item.cantidadTotal || "" }];
         migroCatalogo = true;
       }
+      if(!item.descripcionBase){
+        item.descripcionBase = item.modelos[0] ? item.modelos[0].descripcion : (item.descripcion || "");
+        migroCatalogo = true;
+      }
     });
     if(migroCatalogo) guardarCatalogo();
     try{
@@ -960,13 +964,17 @@
     // Hoja de modelos opcional: OP con varios modelos (columnas OP, Modelo,
     // Cantidad, Código SAP). Si una OP aparece ahí, reemplaza por completo
     // lo que traía de la hoja principal, combinando la descripción base con
-    // el texto del modelo.
+    // el texto del modelo. Se conserva la descripción original (sin SAP)
+    // por si no se elige ningún modelo específico.
     if(sheetModelos){
       var modelos = parsearHojaModelos(sheetModelos, principal.mapaOps);
       if(modelos){
         modelos.ordenOps.forEach(function(op){
           if(!mapaFinal[op]) ordenFinal.push(op);
+          var base = principal.mapaOps[op];
+          var descripcionBase = base && base.modelos[0] ? base.modelos[0].descripcion : "";
           mapaFinal[op] = modelos.mapaOps[op];
+          mapaFinal[op].descripcionBase = descripcionBase;
         });
       }
     }
@@ -976,9 +984,11 @@
       if(item.modelos.length > 1){
         item.descripcion = "Varios modelos (" + item.modelos.length + ")";
         item.sap = "";
+        if(!item.descripcionBase) item.descripcionBase = item.modelos[0].descripcion;
       } else {
         item.descripcion = item.modelos[0].descripcion;
         item.sap = item.modelos[0].sap;
+        item.descripcionBase = item.modelos[0].descripcion;
       }
       return item;
     });
@@ -1386,11 +1396,12 @@
       }
       return false;
     });
-    var html = '<div class="table-wrap"><table><thead><tr><th>OP</th><th>Descripción</th><th>Cliente</th><th>Cant. total</th><th>SAP</th></tr></thead><tbody>';
+    var html = '<div class="table-wrap"><table><thead><tr><th>OP</th><th>Descripción</th><th>Cliente</th><th>Cant. total</th><th>SAP</th><th></th></tr></thead><tbody>';
     resultados.slice(0,200).forEach(function(r){
-      html += '<tr><td class="mono" style="font-weight:600;color:var(--amber-text);">'+escapeHtml(r.op)+'</td><td>'+escapeHtml(r.descripcion)+'</td><td style="color:var(--muted-2);">'+escapeHtml(r.cliente)+'</td><td class="mono" style="color:var(--muted-2);">'+(r.cantidadTotal ? escapeHtml(String(r.cantidadTotal)) : "—")+'</td><td class="mono" style="color:var(--muted-2);">'+(r.sap ? escapeHtml(r.sap) : "—")+'</td></tr>';
+      html += '<tr><td class="mono" style="font-weight:600;color:var(--amber-text);">'+escapeHtml(r.op)+'</td><td>'+escapeHtml(r.descripcion)+'</td><td style="color:var(--muted-2);">'+escapeHtml(r.cliente)+'</td><td class="mono" style="color:var(--muted-2);">'+(r.cantidadTotal ? escapeHtml(String(r.cantidadTotal)) : "—")+'</td><td class="mono" style="color:var(--muted-2);">'+(r.sap ? escapeHtml(r.sap) : "—")+'</td>'
+        + '<td><button type="button" class="btn-copiar-op" data-op="'+escapeHtml(r.op)+'" data-desc="'+escapeHtml(r.descripcion)+'" data-cliente="'+escapeHtml(r.cliente)+'" title="Copiar OP, Descripción y Cliente" style="background:var(--panel-alt);border:1px solid var(--border-input);color:var(--muted);border-radius:6px;padding:5px 7px;cursor:pointer;display:flex;align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></td></tr>';
       if(r.modelos && r.modelos.length > 1){
-        html += '<tr><td></td><td colspan="4" style="padding-top:0;padding-bottom:10px;">';
+        html += '<tr><td></td><td colspan="5" style="padding-top:0;padding-bottom:10px;">';
         html += '<ul style="margin:0;padding-left:18px;list-style:disc;font-size:.78rem;color:var(--muted-2);">';
         r.modelos.forEach(function(mo){
           html += '<li style="margin-bottom:2px;"><span style="color:var(--text);">'+escapeHtml(mo.descripcion)+'</span>'
@@ -1415,6 +1426,36 @@
   btnClearBusqueda.addEventListener("click", function(){
     buscarInput.value = "";
     renderConsulta();
+  });
+
+  function copiarTexto(texto){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      return navigator.clipboard.writeText(texto);
+    }
+    // Respaldo para navegadores/WebViews sin Clipboard API.
+    return new Promise(function(resolve, reject){
+      try{
+        var ta = document.createElement("textarea");
+        ta.value = texto;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        var ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        ok ? resolve() : reject(new Error("execCommand falló"));
+      }catch(err){ reject(err); }
+    });
+  }
+
+  consultaContainer.addEventListener("click", function(e){
+    var btn = e.target.closest(".btn-copiar-op");
+    if(!btn) return;
+    var texto = "OP: " + btn.dataset.op + "\nDescripción: " + btn.dataset.desc + "\nCliente: " + btn.dataset.cliente;
+    copiarTexto(texto)
+      .then(function(){ mostrarToast("ok","Copiado: " + btn.dataset.op); })
+      .catch(function(){ mostrarToast("error","No se pudo copiar"); });
   });
 
   // ---------- exportar ----------
@@ -1987,14 +2028,15 @@
   }
 
   // Resuelve descripción/SAP según el modelo elegido para ese turno (modeloIdx),
-  // o el modelo único si la OP solo tiene uno, o "Varios modelos" si no se eligió.
+  // o el modelo único si la OP solo tiene uno, o la descripción original
+  // (sin SAP) si tiene varios modelos y no se eligió ninguno.
   function resolverModelo(match, modeloIdx){
     if(!match || !match.modelos || match.modelos.length === 0){
       return { descripcion: match ? (match.descripcion||"") : "", sap: match ? (match.sap||"") : "" };
     }
     if(match.modelos.length === 1) return match.modelos[0];
     if(typeof modeloIdx === "number" && modeloIdx >= 0 && match.modelos[modeloIdx]) return match.modelos[modeloIdx];
-    return { descripcion: "Varios modelos (sin elegir)", sap: "" };
+    return { descripcion: match.descripcionBase || match.modelos[0].descripcion || "", sap: "" };
   }
 
   function crearTarjetaMaquina(item){

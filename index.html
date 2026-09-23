@@ -1750,10 +1750,11 @@
 
   // ---------- enviar resumen de turno a Google Sheets ----------
   var STORAGE_URL_APPSCRIPT = "inventario_url_appscript_turno";
+  var DEFAULT_URL_APPSCRIPT = "https://script.google.com/macros/s/AKfycbzx74npsb7NbQOkdsdGF3iRcALoFrAaPa2DJpLLfLLre3eRKM2AQB9lUAxAvVSLWjxG/exec";
 
   function pedirUrlAppScript(){
     var actual = "";
-    try{ actual = localStorage.getItem(STORAGE_URL_APPSCRIPT) || ""; }catch(e){}
+    try{ actual = localStorage.getItem(STORAGE_URL_APPSCRIPT) || DEFAULT_URL_APPSCRIPT; }catch(e){ actual = DEFAULT_URL_APPSCRIPT; }
     var nueva = prompt("Link de la Web App de Google Apps Script:", actual);
     if(nueva === null) return null;
     nueva = nueva.trim();
@@ -1770,7 +1771,7 @@
     var filas = filasTurnoParaExcel();
     if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para enviar"); return; }
     var url = "";
-    try{ url = localStorage.getItem(STORAGE_URL_APPSCRIPT) || ""; }catch(e){}
+    try{ url = localStorage.getItem(STORAGE_URL_APPSCRIPT) || DEFAULT_URL_APPSCRIPT; }catch(e){ url = DEFAULT_URL_APPSCRIPT; }
     if(!url){
       url = pedirUrlAppScript();
       if(!url) return;

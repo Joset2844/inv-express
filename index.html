@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Control de Inventario</title>
+<title>Supervisión de Planta</title>
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#12161F" />
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
@@ -11,7 +11,7 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Inventario" />
+<meta name="apple-mobile-web-app-title" content="Supervisión de Planta" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
@@ -1817,6 +1817,7 @@
     function enviarDefinitivo(){
       btn.disabled = true;
       btn.innerHTML = btn.innerHTML.replace(textoOriginal, "Enviando...");
+      guardarTurnoEnSupabase(filas);
       fetch(url, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -3094,6 +3095,17 @@
       .catch(function(err){ mostrarToast("error","No se pudo guardar: " + err.message.slice(0,80)); });
   });
   $("btnGuardarHistorialDB").addEventListener("dblclick", function(){ configSb(true); });
+
+  // Guarda/sobrescribe el turno actual en Supabase sin preguntar (se usa junto con Sheets)
+  function guardarTurnoEnSupabase(filas){
+    var cfg = configSb(false); if(!cfg) return;
+    sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
+      method: "POST",
+      json: [{ fecha: metaTurno.fecha, tipo: metaTurno.tipo, filas: filas, turno: turno, updated_at: new Date().toISOString() }],
+      prefer: "resolution=merge-duplicates,return=minimal"
+    }).then(function(){ mostrarToast("ok","También guardado en historial"); })
+      .catch(function(err){ mostrarToast("error","Historial no guardado: " + err.message.slice(0,60)); });
+  }
 
   var hdbResultados = [];
   function buscarHistorialDB(){

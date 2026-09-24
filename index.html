@@ -909,6 +909,12 @@
     return { mapaOps: mapaOps, ordenOps: ordenOps };
   }
 
+  function buscarBase(mapa, op){
+    if(mapa[op]) return mapa[op];
+    var k = Object.keys(mapa).find(function(x){ return x.trim().toLowerCase() === op.trim().toLowerCase(); });
+    return k ? mapa[k] : null;
+  }
+
   // Hoja de modelos: columnas OP (repetida), Modelo, Cantidad, Código SAP.
   // No trae descripción completa ni cliente: se toman de la hoja principal
   // (mapaBase) y la descripción final queda "DESCRIPCION BASE - MODELO".
@@ -929,7 +935,7 @@
       var op = String(r[idxOp]).trim();
       var modeloTxt = String(r[idxModelo]).trim();
       var cantidad = idxCantidad !== -1 ? String(r[idxCantidad]).trim() : "";
-      var base = mapaBase[op];
+      var base = buscarBase(mapaBase, op);
       var descBase = base ? (base.modelos && base.modelos[0] ? base.modelos[0].descripcion : (base.descripcion || "")) : "";
       var descripcionFinal = descBase ? (descBase + " - " + modeloTxt) : modeloTxt;
       var modelo = {
@@ -971,7 +977,7 @@
       if(modelos){
         modelos.ordenOps.forEach(function(op){
           if(!mapaFinal[op]) ordenFinal.push(op);
-          var base = principal.mapaOps[op];
+          var base = buscarBase(principal.mapaOps, op);
           var descripcionBase = base && base.modelos[0] ? base.modelos[0].descripcion : "";
           mapaFinal[op] = modelos.mapaOps[op];
           mapaFinal[op].descripcionBase = descripcionBase;
@@ -1617,7 +1623,7 @@
             var match = buscarEnCatalogo(opKey);
             grupos[claveGrupo] = {
               op: opKey,
-              descripcion: descKey || (match ? match.descripcion : ""),
+              descripcion: descKey || (match ? resolverModelo(match, -1).descripcion : ""),
               sap: r.sap || (match ? (match.sap || "") : ""),
               total: 0,
               merma: 0
@@ -1632,7 +1638,7 @@
         ordenGrupos.forEach(function(claveGrupo){
           var g = grupos[claveGrupo];
           var match = buscarEnCatalogo(g.op);
-          var prodDesc = g.descripcion || (match ? match.descripcion : "");
+          var prodDesc = g.descripcion || (match ? resolverModelo(match, -1).descripcion : "");
           filas.push({
             maquina: m.nombre,
             codigoMaquina: m.codigo || "",

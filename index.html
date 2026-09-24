@@ -428,7 +428,7 @@
         <span>Actualizar máquinas</span>
       </button>
       <input type="file" id="fileInputMaquinas" accept=".xlsx,.xls,.csv" class="hidden" />
-      <span style="font-size:.68rem;color:var(--muted-2);">Columnas: MAQUINA, CODIGO</span>
+      <span style="font-size:.68rem;color:var(--muted-2);">Columnas: MAQUINA, CODIGO, TIPO (PP/PT), AREA (V/P)</span>
     </div>
   </div>
 
@@ -1930,25 +1930,42 @@
       mostrarToast("error","Debe tener columnas MAQUINA y CODIGO");
       return;
     }
+    var idxTipo = headers.findIndex(function(h){ return h === "tipo" || h.indexOf("tipo") === 0; });
+    var idxArea = headers.findIndex(function(h){ return h === "area" || h.indexOf("area") === 0; });
+    function leerTipo(r){
+      if(idxTipo === -1) return null;
+      var v = String(r[idxTipo]).trim().toLowerCase();
+      return (v === "pp" || v === "pt") ? v : null;
+    }
+    function leerArea(r){
+      if(idxArea === -1) return null;
+      var v = String(r[idxArea]).trim().toLowerCase();
+      if(v === "v") return "vasos_envases";
+      if(v === "p") return "papel_carton";
+      return null;
+    }
     var actualizadas = 0, creadas = 0;
     rows.slice(1).forEach(function(r){
       var nombre = String(r[idxMaquina]).trim();
       var codigo = String(r[idxCodigo]).trim();
+      var tipoNuevo = leerTipo(r), areaNueva = leerArea(r);
       if(!nombre) return;
       var existente = maquinas.find(function(m){ return m.nombre.trim().toLowerCase() === nombre.toLowerCase(); });
       if(existente){
         existente.codigo = codigo;
         existente.bloqueada = true;
+        if(tipoNuevo) existente.tipoProducto = tipoNuevo;
+        if(areaNueva) existente.area = areaNueva;
         actualizadas++;
       } else {
         maquinas.push({
           id: Date.now()+"-"+Math.random().toString(36).slice(2,7)+"-"+Math.random().toString(36).slice(2,5),
           nombre: nombre,
           activa: false,
-          area: "",
+          area: areaNueva || "",
           codigo: codigo,
           bloqueada: true,
-          tipoProducto: ""
+          tipoProducto: tipoNuevo || ""
         });
         creadas++;
       }
@@ -1983,7 +2000,7 @@
   function pedirUrlSheetsMaquinas(){
     var actual = "";
     try{ actual = localStorage.getItem(STORAGE_URL_SHEETS_MAQUINAS) || DEFAULT_URL_SHEETS_MAQUINAS; }catch(e){}
-    var nueva = prompt("Link de la hoja de MÁQUINAS (columnas MAQUINA, CODIGO, publicada como CSV):", actual);
+    var nueva = prompt("Link de la hoja de MÁQUINAS (columnas MAQUINA, CODIGO, TIPO, AREA, publicada como CSV):", actual);
     if(nueva === null) return null;
     nueva = nueva.trim();
     if(!nueva){ mostrarToast("error","El link es obligatorio"); return null; }

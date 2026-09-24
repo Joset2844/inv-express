@@ -3130,7 +3130,7 @@
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws["!cols"] = [{wch:14},{wch:14},{wch:14},{wch:10},{wch:30}];
     var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Para Copiar");
+    XLSX.utils.book_append_sheet(wb, ws, "Hoja1");
     try{ exportarLibroComoArchivo(wb, "migracion_" + metaTurno.fecha + "_" + metaTurno.tipo + ".xlsx"); }
     catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
   });

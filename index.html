@@ -604,7 +604,7 @@
 </div><!-- /tabResumen -->
 
 <div id="tabHistorialDB" class="tab-page hidden">
-  <div class="panel" style="margin-bottom:14px;">
+  <div class="panel" id="hdbFiltros" style="margin-bottom:14px;">
     <h2>Historial de turnos (Supabase)</h2>
     <div class="row2">
       <div class="field"><label>Desde</label><input type="date" id="hdbDesde" /></div>
@@ -617,6 +617,19 @@
     <p style="font-size:.68rem;color:var(--muted);margin:8px 0 0;">Doble toque en "Buscar" para cambiar URL/clave de Supabase.</p>
   </div>
   <div id="hdbContainer"></div>
+  <div id="hdbEditor" class="hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="btn-clear" id="btnHdbVolver" style="color:var(--muted-2);font-size:.8rem;">← Volver</button>
+      <span class="mono" id="hdbEditorTitulo" style="font-weight:600;"></span>
+      <button class="btn-export" id="btnHdbGuardar">Guardar cambios</button>
+    </div>
+    <div id="hdbFilasEditor"></div>
+    <button class="btn-add" id="btnHdbAgregarFila" style="margin-top:6px;background:var(--panel-alt);color:var(--text);border:1px solid var(--border-input);">+ Agregar fila</button>
+    <div class="odometer" style="margin-top:14px;">
+      <span class="odometer-label">Total del turno</span>
+      <span class="mono" id="hdbEditorTotal" style="color:var(--amber);font-weight:600;">0</span>
+    </div>
+  </div>
 </div>
 </main>
 
@@ -3230,36 +3243,12 @@
         b.addEventListener("click", fn);
         acc.appendChild(b);
       }
-      var detalle = document.createElement("div");
-      detalle.className = "hidden";
-      detalle.style.cssText = "margin-top:10px;";
-      var h = '<div class="table-wrap"><table style="min-width:520px;"><thead><tr><th>Máquina</th><th>OP</th><th>Producto</th><th>Total</th><th>Merma</th></tr></thead><tbody>';
-      filas.forEach(function(f){
-        h += '<tr><td class="mono">'+escapeHtml(f.maquina||"")+'</td><td class="mono">'+escapeHtml(f.op||"—")+'</td><td>'+escapeHtml(f.producto||"—")+'</td><td class="mono" style="color:var(--amber);">'+(f.total||0)+'</td><td class="mono" style="color:var(--red);">'+(f.merma||0)+'</td></tr>';
-      });
-      detalle.innerHTML = h + '</tbody></table></div>';
-
-      btn("Ver","var(--muted-2)", function(){ detalle.classList.toggle("hidden"); });
+      btn("Ver / Editar","var(--amber)", function(){ abrirEditorHistorial(rec); });
       btn("Excel","#4ADE80", function(){
         exportarLibroComoArchivo(construirLibroTurno(filas, "PRODUCCION TURNO " + (rec.tipo==="noche"?"NOCHE":"DIA") + " " + fechaCorta(rec.fecha)),
           "turno_" + rec.fecha + "_" + rec.tipo + ".xlsx");
       });
-      btn("Migración","var(--amber-text)", function(){
-        exportarMigracion(filas, rec.fecha, rec.tipo);
-      });
-      btn("Cargar y editar","var(--amber)", function(){
-        var hayDatos = turno.some(function(t){ return t.registros && t.registros.length; });
-        if(hayDatos && !confirm("Esto reemplazará el turno actual en pantalla. ¿Continuar?")) return;
-        turno = JSON.parse(JSON.stringify(rec.turno || []));
-        metaTurno = { tipo: rec.tipo, fecha: rec.fecha };
-        turno.forEach(function(t){
-          var m = maquinas.find(function(x){ return x.id === t.maquinaId; });
-          if(m) m.activa = true;
-        });
-        guardarTurno(); guardarMetaTurno(); guardarMaquinas(); pintarMetaTurno();
-        document.querySelector('#mainTabs [data-maintab="produccion"]').click();
-        mostrarToast("ok","Cargado. Edita y usa \"Guardar en historial\" para sobrescribir");
-      });
+      btn("Migración","var(--amber-text)", function(){ exportarMigracion(filas, rec.fecha, rec.tipo); });
       btn("Borrar","var(--red)", function(){
         if(!confirm("¿Borrar " + fechaCorta(rec.fecha) + " - " + (rec.tipo==="noche"?"Noche":"Día") + " del historial?")) return;
         var cfg = configSb(false); if(!cfg) return;
@@ -3269,10 +3258,126 @@
       });
       top.appendChild(acc);
       card.appendChild(top);
-      card.appendChild(detalle);
       cont.appendChild(card);
     });
   }
+
+  // ---------- editor simple de un turno del historial ----------
+  var hdbEdit = null, hdbDirty = false;
+
+  function mostrarEditorHistorial(ver){
+    $("hdbFiltros").classList.toggle("hidden", ver);
+    $("hdbContainer").classList.toggle("hidden", ver);
+    $("hdbEditor").classList.toggle("hidden", !ver);
+  }
+
+  function abrirEditorHistorial(rec){
+    hdbEdit = { fecha: rec.fecha, tipo: rec.tipo, filas: JSON.parse(JSON.stringify(rec.filas || [])) };
+    hdbDirty = false;
+    $("hdbEditorTitulo").textContent = fechaCorta(rec.fecha) + " · " + (rec.tipo === "noche" ? "Noche" : "Día");
+    mostrarEditorHistorial(true);
+    renderEditorFilas();
+    window.scrollTo({top:0});
+  }
+
+  function actualizarTotalEditor(){
+    var t = hdbEdit ? hdbEdit.filas.reduce(function(a,f){ return a + (f.total||0); }, 0) : 0;
+    $("hdbEditorTotal").textContent = t + " u";
+  }
+
+  function renderEditorFilas(){
+    var c = $("hdbFilasEditor");
+    c.innerHTML = "";
+    function campo(f, label, key, numerico){
+      var w = document.createElement("div");
+      w.className = "field"; w.style.marginBottom = "8px";
+      var l = document.createElement("label"); l.textContent = label;
+      var inp = document.createElement("input");
+      inp.type = numerico ? "number" : "text";
+      if(numerico) inp.min = "0";
+      inp.value = (f[key] === undefined || f[key] === null) ? "" : f[key];
+      inp.addEventListener("input", function(){
+        f[key] = numerico ? (parseInt(inp.value,10) || 0) : inp.value;
+        hdbDirty = true; actualizarTotalEditor();
+      });
+      w.appendChild(l); w.appendChild(inp);
+      return w;
+    }
+    function selector(f, label, key, opciones){
+      var w = document.createElement("div");
+      w.className = "field"; w.style.marginBottom = "8px";
+      var l = document.createElement("label"); l.textContent = label;
+      var sel = document.createElement("select");
+      opciones.forEach(function(o){
+        var op = document.createElement("option");
+        op.value = o[0]; op.textContent = o[1];
+        if((f[key] || "") === o[0]) op.selected = true;
+        sel.appendChild(op);
+      });
+      sel.addEventListener("change", function(){ f[key] = sel.value; hdbDirty = true; });
+      w.appendChild(l); w.appendChild(sel);
+      return w;
+    }
+    function par(a, b){
+      var d = document.createElement("div"); d.className = "row2";
+      d.appendChild(a); d.appendChild(b); return d;
+    }
+    hdbEdit.filas.forEach(function(f, i){
+      var card = document.createElement("div");
+      card.className = "item-card";
+      card.style.cssText = "flex-direction:column;align-items:stretch;";
+      card.appendChild(par(campo(f,"OP","op"), campo(f,"SAP","sap")));
+      card.appendChild(par(campo(f,"Máquina","maquina"), campo(f,"Código máquina","codigoMaquina")));
+      card.appendChild(campo(f,"Producto","producto"));
+      card.appendChild(par(campo(f,"Total","total",true), campo(f,"Merma","merma",true)));
+      card.appendChild(par(
+        selector(f,"Tipo","tipoProducto",[["","—"],["pp","PP"],["pt","PT"]]),
+        selector(f,"Área","area",[["","Sin área"],["vasos_envases","Vasos y Envases"],["papel_carton","Papel y Cartón"]])
+      ));
+      card.appendChild(campo(f,"Observaciones","observaciones"));
+      var del = document.createElement("button");
+      del.textContent = "Eliminar fila";
+      del.style.cssText = "background:none;border:1px solid var(--red);color:var(--red);padding:6px;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;";
+      del.addEventListener("click", function(){
+        if(!confirm("¿Eliminar esta fila?")) return;
+        hdbEdit.filas.splice(i, 1); hdbDirty = true; renderEditorFilas();
+      });
+      card.appendChild(del);
+      c.appendChild(card);
+    });
+    actualizarTotalEditor();
+  }
+
+  $("btnHdbAgregarFila").addEventListener("click", function(){
+    if(!hdbEdit) return;
+    hdbEdit.filas.push({ maquina:"", codigoMaquina:"", tipoProducto:"", area:"", op:"", sap:"", producto:"", total:0, merma:0, observaciones:"" });
+    hdbDirty = true;
+    renderEditorFilas();
+  });
+
+  $("btnHdbVolver").addEventListener("click", function(){
+    if(hdbDirty && !confirm("Hay cambios sin guardar. ¿Salir sin guardar?")) return;
+    hdbEdit = null; hdbDirty = false;
+    mostrarEditorHistorial(false);
+  });
+
+  $("btnHdbGuardar").addEventListener("click", function(){
+    if(!hdbEdit) return;
+    var cfg = configSb(false); if(!cfg) return;
+    var btn = $("btnHdbGuardar"); btn.disabled = true;
+    sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
+      method: "POST",
+      json: [{ fecha: hdbEdit.fecha, tipo: hdbEdit.tipo, filas: hdbEdit.filas, updated_at: new Date().toISOString() }],
+      prefer: "resolution=merge-duplicates,return=minimal"
+    }).then(function(){
+      mostrarToast("ok","Cambios guardados en el historial");
+      hdbEdit = null; hdbDirty = false;
+      mostrarEditorHistorial(false);
+      buscarHistorialDB();
+    }).catch(function(err){
+      mostrarToast("error","No se pudo guardar: " + err.message.slice(0,80));
+    }).finally(function(){ btn.disabled = false; });
+  });
 
   // ---------- contadores ----------
   function actualizarContadores(){

@@ -448,6 +448,9 @@
       Máquinas (<span id="totalMaquinas">0</span>)
     </h2>
     <div style="display:flex;gap:12px;align-items:center;">
+      <button class="btn-clear" id="btnBloqueoTodo" style="color:var(--amber-text);font-weight:600;">
+        <span id="txtBloqueoTodo">🔓 Desbloquear todo</span>
+      </button>
       <button class="btn-clear" id="btnRespaldarMaquinas" style="color:var(--muted-2);">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         Respaldar
@@ -2250,10 +2253,21 @@
     var visibles = filtroAreaActual === "todas" ? maquinas : maquinas.filter(function(m){ return (m.area||"") === filtroAreaActual; });
     emptyMaquinas.classList.toggle("hidden", visibles.length > 0);
     totalMaquinasEl.textContent = maquinas.length;
+    var hayBloqueadas = maquinas.some(function(m){ return m.bloqueada; });
+    $("txtBloqueoTodo").textContent = hayBloqueadas ? "🔓 Desbloquear todo" : "🔒 Bloquear todo";
     ordenarPorNombre(visibles).forEach(function(item){
       maquinasContainer.appendChild(crearTarjetaMaquina(item));
     });
   }
+
+  $("btnBloqueoTodo").addEventListener("click", function(){
+    if(maquinas.length === 0) return;
+    var bloquear = !maquinas.some(function(m){ return m.bloqueada; });
+    maquinas.forEach(function(m){ m.bloqueada = bloquear; });
+    guardarMaquinas();
+    renderMaquinas();
+    mostrarToast("ok", bloquear ? "Todas las máquinas bloqueadas" : "Todas las máquinas desbloqueadas");
+  });
 
   document.querySelectorAll("#filtroAreaMaquinas .tab-btn").forEach(function(btn){
     btn.addEventListener("click", function(){

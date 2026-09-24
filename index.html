@@ -659,6 +659,7 @@
     try{
       var m = localStorage.getItem(STORAGE_MAQUINAS);
       if(m) maquinas = JSON.parse(m);
+      if(!maquinas.length){ var mb = localStorage.getItem(STORAGE_MAQUINAS+"_bak"); if(mb) maquinas = JSON.parse(mb); }
     }catch(e){}
     try{
       var t = localStorage.getItem(STORAGE_TURNO);
@@ -731,7 +732,7 @@
   }
 
   function guardarMaquinas(){
-    try{ localStorage.setItem(STORAGE_MAQUINAS, JSON.stringify(maquinas)); }
+    try{ var _mj = JSON.stringify(maquinas); localStorage.setItem(STORAGE_MAQUINAS, _mj); if(maquinas.length) localStorage.setItem(STORAGE_MAQUINAS+"_bak", _mj); }
     catch(e){ mostrarToast("error","No se pudo guardar las máquinas"); }
   }
 
@@ -3013,6 +3014,11 @@
   renderConsulta();
   renderMaquinas();
   renderProduccion();
+
+  // Pide al navegador que NO borre los datos de esta app
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+  // Si no hay máquinas, las recarga desde la hoja de Sheets
+  if(maquinas.length === 0 && navigator.onLine){ setTimeout(function(){ $("btnActualizarMaquinas").click(); }, 300); }
 
   // Al abrir la app, refresca el catálogo desde Sheets (evita catálogos viejos en localStorage)
   if(navigator.onLine){ setTimeout(function(){ $("btnActualizarPC").click(); }, 600); }

@@ -972,6 +972,7 @@
       var descBase = base ? (base.modelos && base.modelos[0] ? base.modelos[0].descripcion : (base.descripcion || "")) : "";
       var descripcionFinal = descBase ? (descBase + " - " + modeloTxt) : modeloTxt;
       var modelo = {
+        modelo: modeloTxt,
         descripcion: descripcionFinal,
         sap: idxSap !== -1 ? String(r[idxSap]).trim() : "",
         cantidadTotal: cantidad
@@ -1438,7 +1439,9 @@
     var html = '<div class="table-wrap"><table><thead><tr><th>OP</th><th>Descripción</th><th>Cliente</th><th>Cant. total</th><th>SAP</th><th></th></tr></thead><tbody>';
     resultados.slice(0,200).forEach(function(r){
       html += '<tr><td class="mono" style="font-weight:600;color:var(--amber-text);">'+escapeHtml(r.op)+'</td><td>'+escapeHtml(r.descripcion)+'</td><td style="color:var(--muted-2);">'+escapeHtml(r.cliente)+'</td><td class="mono" style="color:var(--muted-2);">'+(r.cantidadTotal ? escapeHtml(String(r.cantidadTotal)) : "—")+'</td><td class="mono" style="color:var(--muted-2);">'+(r.sap ? escapeHtml(r.sap) : "—")+'</td>'
-        + '<td><button type="button" class="btn-copiar-op" data-op="'+escapeHtml(r.op)+'" data-desc="'+escapeHtml(r.descripcion)+'" data-cliente="'+escapeHtml(r.cliente)+'" title="Copiar OP, Descripción y Cliente" style="background:var(--panel-alt);border:1px solid var(--border-input);color:var(--muted);border-radius:6px;padding:5px 7px;cursor:pointer;display:flex;align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></td></tr>';
+        + '<td><div style="display:flex;gap:4px;"><button type="button" class="btn-copiar-op" data-op="'+escapeHtml(r.op)+'" data-desc="'+escapeHtml((r.modelos && r.modelos.length > 1 && r.descripcionBase) ? r.descripcionBase : r.descripcion)+'" data-cliente="'+escapeHtml(r.cliente)+'" title="Copiar OP, Descripción y Cliente" style="background:var(--panel-alt);border:1px solid var(--border-input);color:var(--muted);border-radius:6px;padding:5px 7px;cursor:pointer;display:flex;align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>'
+        + ((r.modelos && r.modelos.length > 1) ? '<button type="button" class="btn-copiar-modelos" data-op="'+escapeHtml(r.op)+'" title="Copiar OP, Cliente y lista de modelos" style="background:var(--panel-alt);border:1px solid var(--amber);color:var(--amber-text);border-radius:6px;padding:5px 7px;cursor:pointer;font-size:.65rem;font-weight:700;white-space:nowrap;">MODELOS</button>' : '')
+        + '</div></td></tr>';
       if(r.modelos && r.modelos.length > 1){
         html += '<tr><td></td><td colspan="5" style="padding-top:0;padding-bottom:10px;">';
         html += '<ul style="margin:0;padding-left:18px;list-style:disc;font-size:.78rem;color:var(--muted-2);">';
@@ -1489,6 +1492,26 @@
   }
 
   consultaContainer.addEventListener("click", function(e){
+    var btnMod = e.target.closest(".btn-copiar-modelos");
+    if(btnMod){
+      var it = buscarEnCatalogo(btnMod.dataset.op);
+      if(!it || !it.modelos) return;
+      var base = it.descripcionBase || "";
+      var txt = "OP: " + it.op + "\nDescripción: " + base + "\nCliente: " + it.cliente
+        + "\nCantidad: " + (it.cantidadTotal || "") + "\nMODELOS:\n"
+        + it.modelos.map(function(mo){
+            var nombre = mo.modelo;
+            if(!nombre){
+              nombre = mo.descripcion || "";
+              if(base && nombre.indexOf(base + " - ") === 0) nombre = nombre.slice(base.length + 3);
+            }
+            return "- " + nombre + (mo.cantidadTotal ? " - " + mo.cantidadTotal : "");
+          }).join("\n");
+      copiarTexto(txt)
+        .then(function(){ mostrarToast("ok","Modelos copiados: " + it.op); })
+        .catch(function(){ mostrarToast("error","No se pudo copiar"); });
+      return;
+    }
     var btn = e.target.closest(".btn-copiar-op");
     if(!btn) return;
     var texto = "OP: " + btn.dataset.op + "\nDescripción: " + btn.dataset.desc + "\nCliente: " + btn.dataset.cliente;

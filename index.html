@@ -532,6 +532,10 @@
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>
       Guardar en historial
     </button>
+    <button class="btn-clear" id="btnMigracion" style="color:var(--amber-text);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Migración
+    </button>
   </div>
 
   <div class="hidden" id="panelHistorial" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
@@ -3095,6 +3099,22 @@
       .catch(function(err){ mostrarToast("error","No se pudo guardar: " + err.message.slice(0,80)); });
   });
   $("btnGuardarHistorialDB").addEventListener("dblclick", function(){ configSb(true); });
+
+  // ---------- Migración: Excel con el formato de "Para Copiar" (solo máquinas PT) ----------
+  $("btnMigracion").addEventListener("click", function(){
+    var filas = filasTurnoParaExcel().filter(function(f){ return f.tipoProducto === "pt" && f.total > 0; });
+    if(filas.length === 0){ mostrarToast("error","No hay producción PT para migrar"); return; }
+    var aoa = [["ODTCOD","CODPTSAP","CODMAQ","ODTCANT","ODTOBS"]];
+    filas.forEach(function(f){
+      aoa.push([f.op || "", f.sap || "", f.codigoMaquina || "", f.total, f.observaciones || ""]);
+    });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{wch:14},{wch:14},{wch:14},{wch:10},{wch:30}];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Para Copiar");
+    try{ exportarLibroComoArchivo(wb, "migracion_" + metaTurno.fecha + "_" + metaTurno.tipo + ".xlsx"); }
+    catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
+  });
 
   // Guarda/sobrescribe el turno actual en Supabase sin preguntar (se usa junto con Sheets)
   function guardarTurnoEnSupabase(filas){

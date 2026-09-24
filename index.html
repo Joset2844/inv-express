@@ -3157,8 +3157,8 @@
   $("btnGuardarHistorialDB").addEventListener("dblclick", function(){ configSb(true); });
 
   // ---------- Migración: Excel con el formato de "Para Copiar" (solo máquinas PT) ----------
-  $("btnMigracion").addEventListener("click", function(){
-    var filas = filasTurnoParaExcel().filter(function(f){ return f.tipoProducto === "pt" && f.total > 0; });
+  function exportarMigracion(todasLasFilas, fecha, tipo){
+    var filas = todasLasFilas.filter(function(f){ return f.tipoProducto === "pt" && f.total > 0; });
     if(filas.length === 0){ mostrarToast("error","No hay producción PT para migrar"); return; }
     var aoa = [["ODTCOD","CODPTSAP","CODMAQ","ODTCANT","ODTOBS"]];
     filas.forEach(function(f){
@@ -3168,8 +3168,11 @@
     ws["!cols"] = [{wch:14},{wch:14},{wch:14},{wch:10},{wch:30}];
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Hoja1");
-    try{ exportarLibroComoArchivo(wb, "migracion_" + metaTurno.fecha + "_" + metaTurno.tipo + ".xlsx"); }
+    try{ exportarLibroComoArchivo(wb, "migracion_" + fecha + "_" + tipo + ".xlsx"); }
     catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
+  }
+  $("btnMigracion").addEventListener("click", function(){
+    exportarMigracion(filasTurnoParaExcel(), metaTurno.fecha, metaTurno.tipo);
   });
 
   // Guarda/sobrescribe el turno actual en Supabase sin preguntar (se usa junto con Sheets)
@@ -3240,6 +3243,9 @@
       btn("Excel","#4ADE80", function(){
         exportarLibroComoArchivo(construirLibroTurno(filas, "PRODUCCION TURNO " + (rec.tipo==="noche"?"NOCHE":"DIA") + " " + fechaCorta(rec.fecha)),
           "turno_" + rec.fecha + "_" + rec.tipo + ".xlsx");
+      });
+      btn("Migración","var(--amber-text)", function(){
+        exportarMigracion(filas, rec.fecha, rec.tipo);
       });
       btn("Cargar y editar","var(--amber)", function(){
         var hayDatos = turno.some(function(t){ return t.registros && t.registros.length; });

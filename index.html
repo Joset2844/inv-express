@@ -3014,6 +3014,9 @@
   renderMaquinas();
   renderProduccion();
 
+  // Al abrir la app, refresca el catálogo desde Sheets (evita catálogos viejos en localStorage)
+  if(navigator.onLine){ setTimeout(function(){ $("btnActualizarPC").click(); }, 600); }
+
   if("serviceWorker" in navigator){
     var yaRecargo = false;
     navigator.serviceWorker.addEventListener("controllerchange", function(){
@@ -3023,7 +3026,8 @@
     });
 
     window.addEventListener("load", function(){
-      navigator.serviceWorker.register("sw.js").then(function(reg){
+      navigator.serviceWorker.register("sw.js", {updateViaCache:"none"}).then(function(reg){
+        reg.update();
         if(reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
 
         reg.addEventListener("updatefound", function(){

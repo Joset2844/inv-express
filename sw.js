@@ -1,71 +1,20 @@
-const CACHE_NAME = "inventario-planta-v2";
-const APP_SHELL = [
-  "./index.html",
-  "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/icon-512-maskable.png"
-];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+// Network-first: siempre intenta la versión más reciente; usa caché solo sin conexión.
+const CACHE = "inventario-v" + Date.now();
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", e => {
+  e.waitUntil(
+    caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.skipWaiting();
 });
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
-      )
-    )
-  );
-  self.clients.claim();
-});
-
-// Permite que la página fuerce activar la versión nueva sin esperar a que
-// se cierren todas las pestañas/instancias abiertas.
-self.addEventListener("message", (event) => {
-  if (event.data === "SKIP_WAITING") self.skipWaiting();
-});
-
-self.addEventListener("fetch", (event) => {
-  const req = event.request;
-  const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return; // CDN externos pasan directo
-
-  const esNavegacion = req.mode === "navigate" || req.destination === "document";
-
-  if (esNavegacion) {
-    // RED PRIMERO: siempre intenta traer el index.html más reciente del repo.
-    // Si no hay internet, cae a la copia guardada en caché.
-    event.respondWith(
-      fetch(req)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          return response;
-        })
-        .catch(() => caches.match(req))
-    );
-    return;
-  }
-
-  // Resto de archivos (íconos, manifest): caché primero, red de respaldo.
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+self.addEventListener("message", e => { if (e.data === "SKIP_WAITING") self.skipWaiting(); });
+self.addEventListener("fetch", e => {
+  if (e.request.method !== "GET" || !e.request.url.startsWith(self.location.origin)) return;
+  e.respondWith(
+    fetch(e.request, { cache: "no-store" }).then(r => {
+      const copia = r.clone();
+      caches.open(CACHE).then(c => c.put(e.request, copia));
+      return r;
+    }).catch(() => caches.match(e.request))
   );
 });

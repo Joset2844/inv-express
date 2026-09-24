@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>SUPERVISION PLANTA</title>
+<title>Control de Inventario</title>
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#12161F" />
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
@@ -241,6 +241,10 @@
     <button class="tab-btn" data-maintab="resumen">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6h-2"/><path d="M13 3v6h6M9 13h6M9 17h6M9 9h1"/></svg>
       Resumen
+    </button>
+    <button class="tab-btn" data-maintab="historialdb">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+      Historial
     </button>
   </div>
   <div class="wrap tabs" id="subTabsInventario">
@@ -524,6 +528,10 @@
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18-6M22 12.5a10 10 0 0 1-18 6"/></svg>
       Enviar a Sheets
     </button>
+    <button class="btn-clear" id="btnGuardarHistorialDB" style="color:var(--amber-text);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>
+      Guardar en historial
+    </button>
   </div>
 
   <div class="hidden" id="panelHistorial" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
@@ -588,6 +596,21 @@
   <div id="resumenContainer"></div>
 </div><!-- /tabResumen -->
 
+<div id="tabHistorialDB" class="tab-page hidden">
+  <div class="panel" style="margin-bottom:14px;">
+    <h2>Historial de turnos (Supabase)</h2>
+    <div class="row2">
+      <div class="field"><label>Desde</label><input type="date" id="hdbDesde" /></div>
+      <div class="field"><label>Hasta</label><input type="date" id="hdbHasta" /></div>
+    </div>
+    <div class="field"><label>Turno</label>
+      <select id="hdbTurno"><option value="">Todos</option><option value="dia">Día</option><option value="noche">Noche</option></select>
+    </div>
+    <button class="btn-add" id="btnHdbBuscar">Buscar</button>
+    <p style="font-size:.68rem;color:var(--muted);margin:8px 0 0;">Doble toque en "Buscar" para cambiar URL/clave de Supabase.</p>
+  </div>
+  <div id="hdbContainer"></div>
+</div>
 </main>
 
 <div class="bottombar">
@@ -851,12 +874,14 @@
       tabMaquinas.classList.toggle("hidden", tab !== "maquinas");
       tabProduccion.classList.toggle("hidden", tab !== "produccion");
       tabResumen.classList.toggle("hidden", tab !== "resumen");
+      $("tabHistorialDB").classList.toggle("hidden", tab !== "historialdb");
       subTabsInventario.classList.toggle("hidden", tab !== "inventario");
       bottombarInventario.classList.toggle("hidden", tab !== "inventario");
       bottombarProduccion.classList.toggle("hidden", tab !== "produccion");
       if(tab === "maquinas") renderMaquinas();
       if(tab === "produccion") renderProduccion();
       if(tab === "resumen") renderResumen();
+      if(tab === "historialdb") buscarHistorialDB();
       window.scrollTo({top:0, behavior:"smooth"});
     });
   });
@@ -3011,6 +3036,149 @@
     a.click();
     document.body.removeChild(a);
   });
+
+
+  // ---------- historial en Supabase ----------
+  var STORAGE_SB_URL = "inventario_sb_url", STORAGE_SB_KEY = "inventario_sb_key";
+  var DEFAULT_SB_URL = "";   // ej. https://xxxx.supabase.co
+  var DEFAULT_SB_KEY = "";   // anon public key
+
+  function configSb(forzar){
+    var url = "", key = "";
+    try{
+      url = localStorage.getItem(STORAGE_SB_URL) || DEFAULT_SB_URL;
+      key = localStorage.getItem(STORAGE_SB_KEY) || DEFAULT_SB_KEY;
+    }catch(e){}
+    if(forzar || !url || !key){
+      var u = prompt("URL del proyecto Supabase (https://xxxx.supabase.co):", url);
+      if(u === null) return null;
+      var k = prompt("Anon public key de Supabase:", key);
+      if(k === null) return null;
+      url = u.trim().replace(/\/+$/,""); key = k.trim();
+      if(!url || !key){ mostrarToast("error","URL y clave son obligatorias"); return null; }
+      try{ localStorage.setItem(STORAGE_SB_URL, url); localStorage.setItem(STORAGE_SB_KEY, key); }catch(e){}
+    }
+    return { url: url.replace(/\/+$/,""), key: key };
+  }
+
+  function sbFetch(cfg, ruta, opts){
+    opts = opts || {};
+    var headers = { "apikey": cfg.key, "Authorization": "Bearer " + cfg.key };
+    if(opts.json) headers["Content-Type"] = "application/json";
+    if(opts.prefer) headers["Prefer"] = opts.prefer;
+    return fetch(cfg.url + "/rest/v1/" + ruta, {
+      method: opts.method || "GET", headers: headers, cache: "no-store",
+      body: opts.json ? JSON.stringify(opts.json) : undefined
+    }).then(function(r){
+      if(!r.ok) return r.text().then(function(t){ throw new Error("HTTP " + r.status + " " + t); });
+      return r.status === 204 || opts.method === "DELETE" || opts.method === "POST" ? null : r.json();
+    });
+  }
+
+  $("btnGuardarHistorialDB").addEventListener("click", function(){
+    var filas = filasTurnoParaExcel();
+    if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para guardar"); return; }
+    var cfg = configSb(false); if(!cfg) return;
+    var fecha = metaTurno.fecha, tipo = metaTurno.tipo;
+    sbFetch(cfg, "turnos?select=fecha,updated_at&fecha=eq." + fecha + "&tipo=eq." + tipo)
+      .then(function(ex){
+        var msg = (ex && ex.length)
+          ? "Ya existe " + formatearFechaTurno() + " - " + etiquetaTurno() + " en el historial.\n\nSe REEMPLAZARÁ con los datos actuales (" + filas.length + " filas).\n\n¿Confirmas fecha y turno?"
+          : "Guardar en historial:\n\n" + formatearFechaTurno() + " - " + etiquetaTurno() + " (" + filas.length + " filas)\n\n¿Confirmas fecha y turno?";
+        if(!confirm(msg)) return;
+        return sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
+          method: "POST", json: [{ fecha: fecha, tipo: tipo, filas: filas, turno: turno, updated_at: new Date().toISOString() }],
+          prefer: "resolution=merge-duplicates,return=minimal"
+        }).then(function(){ mostrarToast("ok","Guardado en historial"); });
+      })
+      .catch(function(err){ mostrarToast("error","No se pudo guardar: " + err.message.slice(0,80)); });
+  });
+  $("btnGuardarHistorialDB").addEventListener("dblclick", function(){ configSb(true); });
+
+  var hdbResultados = [];
+  function buscarHistorialDB(){
+    var cont = $("hdbContainer");
+    var cfg = configSb(false);
+    if(!cfg){ cont.innerHTML = '<div class="empty-list">Configura Supabase para ver el historial.</div>'; return; }
+    var q = "turnos?select=fecha,tipo,filas,turno,updated_at&order=fecha.desc,tipo.asc&limit=100";
+    if($("hdbDesde").value) q += "&fecha=gte." + $("hdbDesde").value;
+    if($("hdbHasta").value) q += "&fecha=lte." + $("hdbHasta").value;
+    if($("hdbTurno").value) q += "&tipo=eq." + $("hdbTurno").value;
+    cont.innerHTML = '<div class="empty-list">Cargando…</div>';
+    sbFetch(cfg, q).then(function(rows){
+      hdbResultados = rows || [];
+      renderHistorialDB();
+    }).catch(function(err){
+      cont.innerHTML = '<div class="empty-list">No se pudo leer el historial: ' + escapeHtml(err.message.slice(0,120)) + '</div>';
+    });
+  }
+  $("btnHdbBuscar").addEventListener("click", buscarHistorialDB);
+  $("btnHdbBuscar").addEventListener("dblclick", function(){ configSb(true); });
+
+  function fechaCorta(f){ var p = String(f).split("-"); return p.length === 3 ? p[2]+"/"+p[1]+"/"+p[0] : f; }
+
+  function renderHistorialDB(){
+    var cont = $("hdbContainer");
+    cont.innerHTML = "";
+    if(hdbResultados.length === 0){ cont.innerHTML = '<div class="empty-list">Sin turnos guardados con ese filtro.</div>'; return; }
+    hdbResultados.forEach(function(rec){
+      var filas = rec.filas || [];
+      var tot = filas.reduce(function(a,f){ return a + (f.total||0); }, 0);
+      var card = document.createElement("div");
+      card.className = "item-card";
+      card.style.cssText = "flex-direction:column;align-items:stretch;";
+      var top = document.createElement("div");
+      top.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;";
+      top.innerHTML = '<div><span class="mono" style="font-weight:600;">'+fechaCorta(rec.fecha)+'</span> · '+(rec.tipo==="noche"?"Noche":"Día")+' <span style="color:var(--muted);font-size:.72rem;">· '+filas.length+' filas · <strong style="color:var(--amber);">'+tot+' u</strong></span></div>';
+      var acc = document.createElement("div");
+      acc.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;";
+      function btn(txt, bg, fn){
+        var b = document.createElement("button");
+        b.textContent = txt;
+        b.style.cssText = "background:"+bg+";color:#12161F;border:none;padding:5px 10px;border-radius:5px;font-size:.7rem;font-weight:600;cursor:pointer;";
+        b.addEventListener("click", fn);
+        acc.appendChild(b);
+      }
+      var detalle = document.createElement("div");
+      detalle.className = "hidden";
+      detalle.style.cssText = "margin-top:10px;";
+      var h = '<div class="table-wrap"><table style="min-width:520px;"><thead><tr><th>Máquina</th><th>OP</th><th>Producto</th><th>Total</th><th>Merma</th></tr></thead><tbody>';
+      filas.forEach(function(f){
+        h += '<tr><td class="mono">'+escapeHtml(f.maquina||"")+'</td><td class="mono">'+escapeHtml(f.op||"—")+'</td><td>'+escapeHtml(f.producto||"—")+'</td><td class="mono" style="color:var(--amber);">'+(f.total||0)+'</td><td class="mono" style="color:var(--red);">'+(f.merma||0)+'</td></tr>';
+      });
+      detalle.innerHTML = h + '</tbody></table></div>';
+
+      btn("Ver","var(--muted-2)", function(){ detalle.classList.toggle("hidden"); });
+      btn("Excel","#4ADE80", function(){
+        exportarLibroComoArchivo(construirLibroTurno(filas, "PRODUCCION TURNO " + (rec.tipo==="noche"?"NOCHE":"DIA") + " " + fechaCorta(rec.fecha)),
+          "turno_" + rec.fecha + "_" + rec.tipo + ".xlsx");
+      });
+      btn("Cargar y editar","var(--amber)", function(){
+        var hayDatos = turno.some(function(t){ return t.registros && t.registros.length; });
+        if(hayDatos && !confirm("Esto reemplazará el turno actual en pantalla. ¿Continuar?")) return;
+        turno = JSON.parse(JSON.stringify(rec.turno || []));
+        metaTurno = { tipo: rec.tipo, fecha: rec.fecha };
+        turno.forEach(function(t){
+          var m = maquinas.find(function(x){ return x.id === t.maquinaId; });
+          if(m) m.activa = true;
+        });
+        guardarTurno(); guardarMetaTurno(); guardarMaquinas(); pintarMetaTurno();
+        document.querySelector('#mainTabs [data-maintab="produccion"]').click();
+        mostrarToast("ok","Cargado. Edita y usa \"Guardar en historial\" para sobrescribir");
+      });
+      btn("Borrar","var(--red)", function(){
+        if(!confirm("¿Borrar " + fechaCorta(rec.fecha) + " - " + (rec.tipo==="noche"?"Noche":"Día") + " del historial?")) return;
+        var cfg = configSb(false); if(!cfg) return;
+        sbFetch(cfg, "turnos?fecha=eq." + rec.fecha + "&tipo=eq." + rec.tipo, {method:"DELETE"})
+          .then(function(){ mostrarToast("ok","Borrado"); buscarHistorialDB(); })
+          .catch(function(err){ mostrarToast("error","No se pudo borrar"); });
+      });
+      top.appendChild(acc);
+      card.appendChild(top);
+      card.appendChild(detalle);
+      cont.appendChild(card);
+    });
+  }
 
   // ---------- contadores ----------
   function actualizarContadores(){

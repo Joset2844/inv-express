@@ -3287,10 +3287,10 @@
     if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para guardar"); return; }
     var cfg = configSb(false); if(!cfg) return;
     var fecha = metaTurno.fecha, tipo = metaTurno.tipo;
-    sbFetch(cfg, "turnos?select=fecha,updated_at,created_by&fecha=eq." + fecha + "&tipo=eq." + tipo)
+    sbFetch(cfg, "turnos?select=fecha,updated_at,created_by_email&fecha=eq." + fecha + "&tipo=eq." + tipo)
       .then(function(ex){
         var existente = ex && ex[0];
-        if(existente && existente.created_by && existente.created_by !== sbSesion.user_id && sbSesion.usuario !== "admin"){
+        if(existente && existente.created_by_email && existente.created_by_email !== sbSesion.email && sbSesion.usuario !== "admin"){
           mostrarToast("error","Ese turno pertenece a otro usuario, no lo puedes sobrescribir"); return;
         }
         var msg = existente
@@ -3330,10 +3330,10 @@
     if(!sbSesion) return; // sin sesión no se autoguarda; usa el botón "Guardar en historial"
     var cfg = configSb(false); if(!cfg) return;
     var fecha = metaTurno.fecha, tipo = metaTurno.tipo;
-    sbFetch(cfg, "turnos?select=created_by&fecha=eq." + fecha + "&tipo=eq." + tipo)
+    sbFetch(cfg, "turnos?select=created_by_email&fecha=eq." + fecha + "&tipo=eq." + tipo)
       .then(function(ex){
         var existente = ex && ex[0];
-        if(existente && existente.created_by && existente.created_by !== sbSesion.user_id && sbSesion.usuario !== "admin"){
+        if(existente && existente.created_by_email && existente.created_by_email !== sbSesion.email && sbSesion.usuario !== "admin"){
           mostrarToast("error","Ese turno (" + formatearFechaTurno() + " - " + etiquetaTurno() + ") es de otro usuario, no se sobrescribió el historial. Revisa fecha/turno.");
           return;
         }
@@ -3381,7 +3381,7 @@
       var top = document.createElement("div");
       top.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;";
       var esAdmin = sbSesion && sbSesion.usuario === "admin";
-      var esMio = esAdmin || (rec.created_by && sbSesion && rec.created_by === sbSesion.user_id);
+      var esMio = esAdmin || (rec.created_by_email && sbSesion && rec.created_by_email === sbSesion.email);
       var autor = rec.created_by_email ? rec.created_by_email.split("@")[0] : "desconocido";  // usuario simple, sin dominio
       top.innerHTML = '<div><span class="mono" style="font-weight:600;">'+fechaCorta(rec.fecha)+'</span> · '+(rec.tipo==="noche"?"Noche":"Día")+' <span style="color:var(--muted);font-size:.72rem;">· '+filas.length+' filas · <strong style="color:var(--amber);">'+tot+' u</strong> · '+(esMio ? '<span style="color:var(--green);">tuyo</span>' : 'de '+escapeHtml(autor))+'</span></div>';
       var acc = document.createElement("div");

@@ -694,6 +694,7 @@
   </div>
   <div class="bottombar-inner hidden" id="bottombarProduccion">
     <button id="btnCopiarReporteProd" style="background:none;border:1px solid var(--border-input);color:#E7EAF0;padding:9px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;">Copiar texto</button>
+    <button id="btnEnviarActivacion" style="background:none;border:1px solid #93C5FD;color:#93C5FD;padding:9px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;">Enviar activación</button>
     <button class="btn-export" id="btnReportarWhatsappProd" style="background:#25D366;color:#0B2E13;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2z"/></svg>
       Reportar WhatsApp
@@ -3204,6 +3205,37 @@
     l.push("✅ *Total turno: " + totalGeneral + " u*" + (mermaGeneral > 0 ? "   ⚠️ Merma: " + mermaGeneral + " u" : ""));
     return l.join("\n");
   }
+
+  // Aviso simple de qué máquinas están activas y con qué OP/producto en este momento,
+  // sin unidades ni totales (solo para notificar la activación).
+  function generarReporteActivacion(){
+    var activas = ordenarPorAreaYNombre(maquinas.filter(function(m){ return m.activa; }), function(m){ return m.area; });
+    var l = ["ACTIVACION DE MAQUINAS:"];
+    if(activas.length === 0){ l.push("", "No hay máquinas activas."); return l.join("\n"); }
+    AREAS_ORDEN.forEach(function(areaDef){
+      var deArea = activas.filter(function(m){ return (m.area||"") === areaDef.key; });
+      if(deArea.length === 0) return;
+      l.push("");
+      l.push(areaDef.label);
+      deArea.forEach(function(m){
+        var t = obtenerTurno(m.id);
+        var match = buscarEnCatalogo(t.op);
+        var desc = match ? resolverModelo(match, t.modeloIdx).descripcion : "";
+        var opTxt = t.op ? t.op : "sin OP";
+        l.push("-" + m.nombre + ": " + opTxt + (desc ? " - " + desc : ""));
+      });
+    });
+    return l.join("\n");
+  }
+
+  $("btnEnviarActivacion").addEventListener("click", function(){
+    if(maquinas.length === 0){ mostrarToast("error","No hay máquinas registradas"); return; }
+    var texto = generarReporteActivacion();
+    var url = "https://wa.me/?text=" + encodeURIComponent(texto);
+    var a = document.createElement("a");
+    a.href = url; a.target = "_blank"; a.rel = "noopener";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
 
   $("btnCopiarReporteProd").addEventListener("click", function(){
     if(maquinas.length === 0){ mostrarToast("error","No hay máquinas registradas"); return; }

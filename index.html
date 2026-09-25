@@ -499,6 +499,9 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
         Historial
       </button>
+      <button class="btn-clear" id="btnProdLogin" style="color:var(--amber-text);font-weight:600;">
+        <span id="txtProdLogin">Iniciar sesión</span>
+      </button>
       <button class="btn-clear" id="btnReiniciarTurno" style="color:var(--red);">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><polyline points="3 4 3 10 9 10"/></svg>
         Reiniciar turno
@@ -541,6 +544,16 @@
     </button>
   </div>
 
+  <div class="hidden" id="panelLoginProd" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <p style="font-size:.82rem;font-weight:600;margin:0 0 8px;color:var(--text);">Iniciar sesión</p>
+    <div class="field"><label>Usuario</label><input type="text" id="prodEmail" autocomplete="username" autocapitalize="none" /></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="prodPass" autocomplete="current-password" /></div>
+    <p id="prodLoginError" style="color:var(--red);font-size:.75rem;margin:0 0 8px;"></p>
+    <div style="display:flex;gap:8px;">
+      <button id="btnConfirmarLoginProd" style="flex:1;background:var(--amber);color:#12161F;border:none;padding:9px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">Ingresar</button>
+      <button id="btnCerrarLoginProd" style="background:none;border:1px solid var(--border-input);color:var(--text);padding:9px 14px;border-radius:6px;font-size:.8rem;cursor:pointer;">Cerrar</button>
+    </div>
+  </div>
   <div class="hidden" id="panelHistorial" style="background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <span style="font-size:.82rem;font-weight:600;color:var(--text);">Turnos anteriores</span>
@@ -604,8 +617,19 @@
 </div><!-- /tabResumen -->
 
 <div id="tabHistorialDB" class="tab-page hidden">
+  <div class="panel hidden" id="hdbLogin" style="margin-bottom:14px;">
+    <h2>Inicia sesión para ver el historial</h2>
+    <div class="field"><label>Usuario</label><input type="text" id="hdbEmail" autocomplete="username" autocapitalize="none" /></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="hdbPass" autocomplete="current-password" /></div>
+    <button class="btn-add" id="btnHdbLogin">Ingresar</button>
+    <p id="hdbLoginError" style="color:var(--red);font-size:.75rem;margin-top:8px;"></p>
+    <p style="font-size:.68rem;color:var(--muted);margin-top:8px;">Ingresa solo tu usuario (sin @). Los usuarios se crean desde Supabase como "usuario@planta.local".</p>
+  </div>
   <div class="panel" id="hdbFiltros" style="margin-bottom:14px;">
-    <h2>Historial de turnos (Supabase)</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <h2 style="margin:0;">Historial de turnos (Supabase)</h2>
+      <button class="btn-clear" id="btnHdbLogout" style="color:var(--muted-2);font-size:.72rem;"></button>
+    </div>
     <div class="row2">
       <div class="field"><label>Desde</label><input type="date" id="hdbDesde" /></div>
       <div class="field"><label>Hasta</label><input type="date" id="hdbHasta" /></div>
@@ -901,7 +925,7 @@
       if(tab === "maquinas") renderMaquinas();
       if(tab === "produccion") renderProduccion();
       if(tab === "resumen") renderResumen();
-      if(tab === "historialdb") buscarHistorialDB();
+      if(tab === "historialdb") mostrarSeccionHdb();
       window.scrollTo({top:0, behavior:"smooth"});
     });
   });
@@ -3113,6 +3137,71 @@
 
 
   // ---------- historial en Supabase ----------
+  function mostrarSeccionHdb(){
+    $("hdbEditor").classList.add("hidden");
+    if(!sbSesion){
+      $("hdbLogin").classList.remove("hidden");
+      $("hdbFiltros").classList.add("hidden");
+      $("hdbContainer").innerHTML = "";
+      return;
+    }
+    $("hdbLogin").classList.add("hidden");
+    $("hdbFiltros").classList.remove("hidden");
+    $("hdbContainer").classList.remove("hidden");
+    $("btnHdbLogout").textContent = "Salir (" + sbSesion.usuario + ")";
+    buscarHistorialDB();
+  }
+
+  function pintarBotonLoginProd(){
+    var el = $("txtProdLogin");
+    var btn = $("btnProdLogin");
+    if(sbSesion){ el.textContent = "👤 " + sbSesion.usuario; btn.style.color = "var(--green)"; }
+    else { el.textContent = "Iniciar sesión"; btn.style.color = "var(--amber-text)"; }
+  }
+
+  $("btnProdLogin").addEventListener("click", function(){
+    if(sbSesion){
+      if(confirm("¿Cerrar sesión de " + sbSesion.usuario + "?")){ sbLogout(); pintarBotonLoginProd(); }
+      return;
+    }
+    $("prodLoginError").textContent = "";
+    $("panelLoginProd").classList.remove("hidden");
+  });
+  $("btnCerrarLoginProd").addEventListener("click", function(){ $("panelLoginProd").classList.add("hidden"); });
+  $("btnConfirmarLoginProd").addEventListener("click", function(){
+    var cfg = configSb(false); if(!cfg) return;
+    var email = $("prodEmail").value.trim(), pass = $("prodPass").value;
+    $("prodLoginError").textContent = "";
+    if(!email || !pass){ $("prodLoginError").textContent = "Ingresa correo y contraseña"; return; }
+    sbLogin(cfg, email, pass).then(function(){
+      $("prodPass").value = "";
+      $("panelLoginProd").classList.add("hidden");
+      pintarBotonLoginProd();
+      mostrarToast("ok","Sesión iniciada");
+    }).catch(function(err){ $("prodLoginError").textContent = err.message; });
+  });
+
+  $("btnHdbLogin").addEventListener("click", function(){
+    var cfg = configSb(false); if(!cfg) return;
+    var email = $("hdbEmail").value.trim(), pass = $("hdbPass").value;
+    $("hdbLoginError").textContent = "";
+    if(!email || !pass){ $("hdbLoginError").textContent = "Ingresa correo y contraseña"; return; }
+    sbLogin(cfg, email, pass).then(function(){
+      $("hdbPass").value = "";
+      mostrarSeccionHdb();
+      pintarBotonLoginProd();
+    }).catch(function(err){
+      $("hdbLoginError").textContent = err.message;
+    });
+  });
+
+  $("btnHdbLogout").addEventListener("click", function(){
+    sbLogout();
+    mostrarSeccionHdb();
+    pintarBotonLoginProd();
+  });
+
+
   var STORAGE_SB_URL = "inventario_sb_url", STORAGE_SB_KEY = "inventario_sb_key";
   var DEFAULT_SB_URL = "https://skoksthbuyrhekfchmug.supabase.co";
   var DEFAULT_SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNrb2tzdGhidXlyaGVrZmNobXVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyMTEwNjUsImV4cCI6MjEwNTc4NzA2NX0.1vrW7PVIzPvi5a4kIIc-1EoPIYsZcOTeWVq0vXBr5f4";
@@ -3135,33 +3224,81 @@
     return { url: url.replace(/\/+$/,""), key: key };
   }
 
+  var STORAGE_SB_SESION = "inventario_sb_sesion";
+  var sbSesion = null;
+  try{ var _ss = localStorage.getItem(STORAGE_SB_SESION); if(_ss) sbSesion = JSON.parse(_ss); }catch(e){}
+  if(sbSesion && !sbSesion.usuario && sbSesion.email) sbSesion.usuario = sbSesion.email.split("@")[0];
+
+  function sbGuardarSesion(s){
+    sbSesion = s;
+    try{ if(s) localStorage.setItem(STORAGE_SB_SESION, JSON.stringify(s)); else localStorage.removeItem(STORAGE_SB_SESION); }catch(e){}
+  }
+
+  var SB_DOMINIO_USUARIO = "planta.local"; // los usuarios se crean en Supabase como "usuario@planta.local"
+
+  function sbUsuarioAEmail(usuario){
+    return usuario.trim().toLowerCase().replace(/\s+/g,"") + "@" + SB_DOMINIO_USUARIO;
+  }
+
+  function sbLogin(cfg, usuario, pass){
+    var email = sbUsuarioAEmail(usuario);
+    return fetch(cfg.url + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: { "apikey": cfg.key, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: pass })
+    }).then(function(r){
+      return r.json().then(function(data){
+        if(!r.ok) throw new Error(data.error_description || data.msg || ("HTTP " + r.status));
+        var nombreUsuario = data.user.email.split("@")[0];
+        sbGuardarSesion({ access_token: data.access_token, user_id: data.user.id, email: data.user.email, usuario: nombreUsuario });
+        return data;
+      });
+    });
+  }
+
+  function sbLogout(){ sbGuardarSesion(null); }
+
   function sbFetch(cfg, ruta, opts){
     opts = opts || {};
-    var headers = { "apikey": cfg.key, "Authorization": "Bearer " + cfg.key };
+    var headers = { "apikey": cfg.key, "Authorization": "Bearer " + (sbSesion ? sbSesion.access_token : cfg.key) };
     if(opts.json) headers["Content-Type"] = "application/json";
     if(opts.prefer) headers["Prefer"] = opts.prefer;
     return fetch(cfg.url + "/rest/v1/" + ruta, {
       method: opts.method || "GET", headers: headers, cache: "no-store",
       body: opts.json ? JSON.stringify(opts.json) : undefined
     }).then(function(r){
-      if(!r.ok) return r.text().then(function(t){ throw new Error("HTTP " + r.status + " " + t); });
+      if(!r.ok) return r.text().then(function(t){
+        if(r.status === 401) sbGuardarSesion(null);
+        throw new Error("HTTP " + r.status + " " + t);
+      });
       return r.status === 204 || opts.method === "DELETE" || opts.method === "POST" ? null : r.json();
     });
   }
 
+  function exigirSesionHdb(){
+    if(sbSesion) return true;
+    mostrarToast("error","Inicia sesión en la pestaña Historial primero");
+    return false;
+  }
+
   $("btnGuardarHistorialDB").addEventListener("click", function(){
+    if(!exigirSesionHdb()) return;
     var filas = filasTurnoParaExcel();
     if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para guardar"); return; }
     var cfg = configSb(false); if(!cfg) return;
     var fecha = metaTurno.fecha, tipo = metaTurno.tipo;
-    sbFetch(cfg, "turnos?select=fecha,updated_at&fecha=eq." + fecha + "&tipo=eq." + tipo)
+    sbFetch(cfg, "turnos?select=fecha,updated_at,created_by&fecha=eq." + fecha + "&tipo=eq." + tipo)
       .then(function(ex){
-        var msg = (ex && ex.length)
+        var existente = ex && ex[0];
+        if(existente && existente.created_by && existente.created_by !== sbSesion.user_id){
+          mostrarToast("error","Ese turno pertenece a otro usuario, no lo puedes sobrescribir"); return;
+        }
+        var msg = existente
           ? "Ya existe " + formatearFechaTurno() + " - " + etiquetaTurno() + " en el historial.\n\nSe REEMPLAZARÁ con los datos actuales (" + filas.length + " filas).\n\n¿Confirmas fecha y turno?"
           : "Guardar en historial:\n\n" + formatearFechaTurno() + " - " + etiquetaTurno() + " (" + filas.length + " filas)\n\n¿Confirmas fecha y turno?";
         if(!confirm(msg)) return;
         return sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
-          method: "POST", json: [{ fecha: fecha, tipo: tipo, filas: filas, turno: turno, updated_at: new Date().toISOString() }],
+          method: "POST", json: [{ fecha: fecha, tipo: tipo, filas: filas, turno: turno, created_by: sbSesion.user_id, created_by_email: sbSesion.email, updated_at: new Date().toISOString() }],
           prefer: "resolution=merge-duplicates,return=minimal"
         }).then(function(){ mostrarToast("ok","Guardado en historial"); });
       })
@@ -3190,12 +3327,22 @@
 
   // Guarda/sobrescribe el turno actual en Supabase sin preguntar (se usa junto con Sheets)
   function guardarTurnoEnSupabase(filas){
+    if(!sbSesion) return; // sin sesión no se autoguarda; usa el botón "Guardar en historial"
     var cfg = configSb(false); if(!cfg) return;
-    sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
-      method: "POST",
-      json: [{ fecha: metaTurno.fecha, tipo: metaTurno.tipo, filas: filas, turno: turno, updated_at: new Date().toISOString() }],
-      prefer: "resolution=merge-duplicates,return=minimal"
-    }).then(function(){ mostrarToast("ok","También guardado en historial"); })
+    var fecha = metaTurno.fecha, tipo = metaTurno.tipo;
+    sbFetch(cfg, "turnos?select=created_by&fecha=eq." + fecha + "&tipo=eq." + tipo)
+      .then(function(ex){
+        var existente = ex && ex[0];
+        if(existente && existente.created_by && existente.created_by !== sbSesion.user_id){
+          mostrarToast("error","Ese turno (" + formatearFechaTurno() + " - " + etiquetaTurno() + ") es de otro usuario, no se sobrescribió el historial. Revisa fecha/turno.");
+          return;
+        }
+        return sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
+          method: "POST",
+          json: [{ fecha: fecha, tipo: tipo, filas: filas, turno: turno, created_by: sbSesion.user_id, created_by_email: sbSesion.email, updated_at: new Date().toISOString() }],
+          prefer: "resolution=merge-duplicates,return=minimal"
+        }).then(function(){ mostrarToast("ok","También guardado en historial"); });
+      })
       .catch(function(err){ mostrarToast("error","Historial no guardado: " + err.message.slice(0,60)); });
   }
 
@@ -3204,7 +3351,7 @@
     var cont = $("hdbContainer");
     var cfg = configSb(false);
     if(!cfg){ cont.innerHTML = '<div class="empty-list">Configura Supabase para ver el historial.</div>'; return; }
-    var q = "turnos?select=fecha,tipo,filas,turno,updated_at&order=fecha.desc,tipo.asc&limit=100";
+    var q = "turnos?select=fecha,tipo,filas,turno,created_by,created_by_email,updated_at&order=fecha.desc,tipo.asc&limit=100";
     if($("hdbDesde").value) q += "&fecha=gte." + $("hdbDesde").value;
     if($("hdbHasta").value) q += "&fecha=lte." + $("hdbHasta").value;
     if($("hdbTurno").value) q += "&tipo=eq." + $("hdbTurno").value;
@@ -3233,7 +3380,9 @@
       card.style.cssText = "flex-direction:column;align-items:stretch;";
       var top = document.createElement("div");
       top.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;";
-      top.innerHTML = '<div><span class="mono" style="font-weight:600;">'+fechaCorta(rec.fecha)+'</span> · '+(rec.tipo==="noche"?"Noche":"Día")+' <span style="color:var(--muted);font-size:.72rem;">· '+filas.length+' filas · <strong style="color:var(--amber);">'+tot+' u</strong></span></div>';
+      var esMio = rec.created_by && sbSesion && rec.created_by === sbSesion.user_id;
+      var autor = rec.created_by_email ? rec.created_by_email.split("@")[0] : "desconocido";  // usuario simple, sin dominio
+      top.innerHTML = '<div><span class="mono" style="font-weight:600;">'+fechaCorta(rec.fecha)+'</span> · '+(rec.tipo==="noche"?"Noche":"Día")+' <span style="color:var(--muted);font-size:.72rem;">· '+filas.length+' filas · <strong style="color:var(--amber);">'+tot+' u</strong> · '+(esMio ? '<span style="color:var(--green);">tuyo</span>' : 'de '+escapeHtml(autor))+'</span></div>';
       var acc = document.createElement("div");
       acc.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;";
       function btn(txt, bg, fn){
@@ -3243,13 +3392,13 @@
         b.addEventListener("click", fn);
         acc.appendChild(b);
       }
-      btn("Ver / Editar","var(--amber)", function(){ abrirEditorHistorial(rec); });
+      btn(esMio ? "Ver / Editar" : "Ver", "var(--amber)", function(){ abrirEditorHistorial(rec, esMio); });
       btn("Excel","#4ADE80", function(){
         exportarLibroComoArchivo(construirLibroTurno(filas, "PRODUCCION TURNO " + (rec.tipo==="noche"?"NOCHE":"DIA") + " " + fechaCorta(rec.fecha)),
           "turno_" + rec.fecha + "_" + rec.tipo + ".xlsx");
       });
       btn("Migración","var(--amber-text)", function(){ exportarMigracion(filas, rec.fecha, rec.tipo); });
-      btn("Borrar","var(--red)", function(){
+      if(esMio) btn("Borrar","var(--red)", function(){
         if(!confirm("¿Borrar " + fechaCorta(rec.fecha) + " - " + (rec.tipo==="noche"?"Noche":"Día") + " del historial?")) return;
         var cfg = configSb(false); if(!cfg) return;
         sbFetch(cfg, "turnos?fecha=eq." + rec.fecha + "&tipo=eq." + rec.tipo, {method:"DELETE"})
@@ -3271,10 +3420,12 @@
     $("hdbEditor").classList.toggle("hidden", !ver);
   }
 
-  function abrirEditorHistorial(rec){
-    hdbEdit = { fecha: rec.fecha, tipo: rec.tipo, filas: JSON.parse(JSON.stringify(rec.filas || [])) };
+  function abrirEditorHistorial(rec, editable){
+    hdbEdit = { fecha: rec.fecha, tipo: rec.tipo, filas: JSON.parse(JSON.stringify(rec.filas || [])), editable: !!editable };
     hdbDirty = false;
-    $("hdbEditorTitulo").textContent = fechaCorta(rec.fecha) + " · " + (rec.tipo === "noche" ? "Noche" : "Día");
+    $("hdbEditorTitulo").textContent = fechaCorta(rec.fecha) + " · " + (rec.tipo === "noche" ? "Noche" : "Día") + (editable ? "" : " (solo lectura)");
+    $("btnHdbGuardar").classList.toggle("hidden", !editable);
+    $("btnHdbAgregarFila").classList.toggle("hidden", !editable);
     mostrarEditorHistorial(true);
     renderEditorFilas();
     window.scrollTo({top:0});
@@ -3296,6 +3447,7 @@
       inp.type = numerico ? "number" : "text";
       if(numerico) inp.min = "0";
       inp.value = (f[key] === undefined || f[key] === null) ? "" : f[key];
+      inp.disabled = !editable;
       inp.addEventListener("input", function(){
         f[key] = numerico ? (parseInt(inp.value,10) || 0) : inp.value;
         hdbDirty = true; actualizarTotalEditor();
@@ -3314,6 +3466,7 @@
         if((f[key] || "") === o[0]) op.selected = true;
         sel.appendChild(op);
       });
+      sel.disabled = !editable;
       sel.addEventListener("change", function(){ f[key] = sel.value; hdbDirty = true; });
       w.appendChild(l); w.appendChild(sel);
       return w;
@@ -3322,6 +3475,7 @@
       var d = document.createElement("div"); d.className = "row2";
       d.appendChild(a); d.appendChild(b); return d;
     }
+    var editable = hdbEdit.editable;
     hdbEdit.filas.forEach(function(f, i){
       var card = document.createElement("div");
       card.className = "item-card";
@@ -3336,6 +3490,7 @@
       ));
       card.appendChild(campo(f,"Observaciones","observaciones"));
       var del = document.createElement("button");
+      if(!editable) del.classList.add("hidden");
       del.textContent = "Eliminar fila";
       del.style.cssText = "background:none;border:1px solid var(--red);color:var(--red);padding:6px;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;";
       del.addEventListener("click", function(){
@@ -3356,18 +3511,19 @@
   });
 
   $("btnHdbVolver").addEventListener("click", function(){
-    if(hdbDirty && !confirm("Hay cambios sin guardar. ¿Salir sin guardar?")) return;
+    if(hdbEdit && hdbEdit.editable && hdbDirty && !confirm("Hay cambios sin guardar. ¿Salir sin guardar?")) return;
     hdbEdit = null; hdbDirty = false;
     mostrarEditorHistorial(false);
   });
 
   $("btnHdbGuardar").addEventListener("click", function(){
-    if(!hdbEdit) return;
+    if(!hdbEdit || !hdbEdit.editable) return;
+    if(!exigirSesionHdb()) return;
     var cfg = configSb(false); if(!cfg) return;
     var btn = $("btnHdbGuardar"); btn.disabled = true;
     sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
       method: "POST",
-      json: [{ fecha: hdbEdit.fecha, tipo: hdbEdit.tipo, filas: hdbEdit.filas, updated_at: new Date().toISOString() }],
+      json: [{ fecha: hdbEdit.fecha, tipo: hdbEdit.tipo, filas: hdbEdit.filas, created_by: sbSesion.user_id, created_by_email: sbSesion.email, updated_at: new Date().toISOString() }],
       prefer: "resolution=merge-duplicates,return=minimal"
     }).then(function(){
       mostrarToast("ok","Cambios guardados en el historial");
@@ -3393,6 +3549,8 @@
   cargarStorage();
   pintarMetaTurno();
   actualizarTotalForm();
+  if(sbSesion) $("btnHdbLogout").textContent = "Salir (" + sbSesion.usuario + ")";
+  pintarBotonLoginProd();
   renderLista();
   actualizarContadores();
   renderConsulta();

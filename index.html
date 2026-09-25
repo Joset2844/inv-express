@@ -3500,6 +3500,7 @@
           "turno_" + rec.fecha + "_" + rec.tipo + ".xlsx");
       });
       btn("Migración","var(--amber-text)", function(){ exportarMigracion(filas, rec.fecha, rec.tipo); });
+      btn("Imprimir","#93C5FD", function(){ imprimirHistorial(rec, filas); });
       if(esMio) btn("Borrar","var(--red)", function(){
         if(!confirm("¿Borrar " + fechaCorta(rec.fecha) + " - " + (rec.tipo==="noche"?"Noche":"Día") + " del historial?")) return;
         var cfg = configSb(false); if(!cfg) return;
@@ -3511,6 +3512,45 @@
       card.appendChild(top);
       cont.appendChild(card);
     });
+  }
+
+  // ---------- impresión (1 hoja) del turno, por máquina y por área ----------
+  function imprimirHistorial(rec, filas){
+    if(!filas.length){ mostrarToast("error","Este turno no tiene filas"); return; }
+    var porArea = {};
+    AREAS_ORDEN.forEach(function(a){ porArea[a.key] = { label: a.label, filas: [] }; });
+    filas.forEach(function(f){ (porArea[f.area||""] || porArea[""]).filas.push(f); });
+
+    function filaHtml(f){
+      return "<tr><td>"+escapeHtml(f.maquina||"")+"</td><td>"+escapeHtml(f.op||"—")+"</td><td>"+escapeHtml(f.producto||"—")+
+        "</td><td class='num'>"+(f.total||0)+"</td><td class='num'>"+(f.merma||0)+"</td><td>"+escapeHtml(f.observaciones||"")+"</td></tr>";
+    }
+    function bloqueArea(a){
+      if(!a.filas.length) return "";
+      var t = a.filas.reduce(function(s,f){ return s+(f.total||0); },0);
+      var m = a.filas.reduce(function(s,f){ return s+(f.merma||0); },0);
+      return "<h2>"+a.label+"</h2><table><thead><tr><th>Máquina</th><th>OP</th><th>Producto</th><th class='num'>Total</th><th class='num'>Merma</th><th>Observaciones</th></tr></thead><tbody>"
+        + a.filas.map(filaHtml).join("") + "<tr class='total'><td colspan='3'>Subtotal</td><td class='num'>"+t+"</td><td class='num'>"+m+"</td><td></td></tr></tbody></table>";
+    }
+    var totalGen = filas.reduce(function(s,f){ return s+(f.total||0); },0);
+    var mermaGen = filas.reduce(function(s,f){ return s+(f.merma||0); },0);
+    var html = "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><title>Turno "+fechaCorta(rec.fecha)+"</title><style>"
+      + "@page{size:A4;margin:12mm;}body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;}"
+      + "h1{font-size:16px;margin:0 0 2px;}h2{font-size:13px;background:#eee;padding:4px 6px;margin:14px 0 4px;border-left:4px solid #333;}"
+      + "table{width:100%;border-collapse:collapse;margin-bottom:4px;}th,td{border:1px solid #999;padding:3px 5px;text-align:left;}"
+      + "th{background:#f2f2f2;}.num{text-align:right;}.total td{font-weight:700;background:#f7f7f7;}"
+      + ".resumen{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #333;padding-bottom:6px;margin-bottom:6px;}"
+      + ".resumen strong{font-size:14px;}"
+      + "</style></head><body>"
+      + "<div class='resumen'><div><h1>Producción por Máquina</h1><div>"+fechaCorta(rec.fecha)+" · "+(rec.tipo==="noche"?"Turno Noche":"Turno Día")+"</div></div>"
+      + "<div><strong>"+totalGen+" u</strong> total"+(mermaGen? " · "+mermaGen+" u merma":"")+"</div></div>"
+      + AREAS_ORDEN.map(function(a){ return bloqueArea(porArea[a.key]); }).join("")
+      + "</body></html>";
+
+    var w = window.open("", "_blank");
+    if(!w){ mostrarToast("error","El navegador bloqueó la ventana de impresión"); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+    w.onload = function(){ w.focus(); w.print(); };
   }
 
   // ---------- editor simple de un turno del historial ----------

@@ -183,6 +183,29 @@
   @media (min-width:1300px){
     .wrap{max-width:1320px;}
   }
+  @media (min-width:1600px){
+    .wrap{max-width:1480px;}
+  }
+
+  /* ===== Pantallas anchas (PC 1080p): aprovechar el espacio en listas largas ===== */
+  @media (min-width:1300px){
+    #maquinasContainer, #produccionContainer, #hdbContainer{
+      display:grid; grid-template-columns:repeat(2,1fr); gap:14px; align-items:start;
+    }
+    #maquinasContainer .item-card, #produccionContainer .item-card, #hdbContainer .item-card{
+      margin-bottom:0;
+    }
+    #listaContainer{
+      display:grid; grid-template-columns:repeat(2,1fr); gap:10px; align-items:start;
+    }
+    #listaContainer .item-card{ margin-bottom:0; }
+    .empty-list{ grid-column:1 / -1; }
+  }
+  @media (min-width:1750px){
+    #maquinasContainer, #produccionContainer, #hdbContainer, #listaContainer{
+      grid-template-columns:repeat(3,1fr);
+    }
+  }
 
   /* ===== Estados hover solo en dispositivos con mouse (no afecta táctil) ===== */
   @media (hover:hover) and (pointer:fine){

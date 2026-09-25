@@ -3115,77 +3115,93 @@
   });
 
   // ---------- reporte WhatsApp ----------
+  function bloqueMaquinaWsp(m){
+    var t = obtenerTurno(m.id);
+    var lineas = [];
+    if(t.motivoParada){
+      lineas.push("▪️ *" + m.nombre + "*  ⏸ _" + t.motivoParada + "_" + (t.observaciones ? "\n     📝 " + t.observaciones : ""));
+      return { lineas: lineas, total: 0, merma: 0 };
+    }
+    if(!t.registros || t.registros.length === 0){
+      var match = buscarEnCatalogo(t.op);
+      var opTxt = t.op ? t.op : "sin OP asignada";
+      var descTxt = match ? (resolverModelo(match, t.modeloIdx).descripcion ? " — " + resolverModelo(match, t.modeloIdx).descripcion : "") : "";
+      lineas.push("▪️ *" + m.nombre + "*  ·  0 u"
+        + "\n     " + opTxt + descTxt
+        + (t.observaciones ? "\n     📝 " + t.observaciones : ""));
+      return { lineas: lineas, total: 0, merma: 0 };
+    }
+    var grupos = {}, ordenGrupos = [], opsConGrupo = [];
+    t.registros.forEach(function(r){
+      var opKey = r.op || t.op || "";
+      var descKey = r.descripcion || "";
+      var claveGrupo = opKey + "||" + descKey;
+      if(!grupos[claveGrupo]){
+        var matchG = buscarEnCatalogo(opKey);
+        grupos[claveGrupo] = {
+          op: opKey,
+          descripcion: descKey || (matchG ? resolverModelo(matchG, t.modeloIdx).descripcion : ""),
+          total: 0, merma: 0, obs: []
+        };
+        ordenGrupos.push(claveGrupo);
+        if(opsConGrupo.indexOf(opKey) === -1) opsConGrupo.push(opKey);
+      }
+      grupos[claveGrupo].total += (r.cantidad || 0);
+      grupos[claveGrupo].merma += (r.merma || 0);
+      agregarObsRegistro(t, grupos[claveGrupo], r);
+    });
+    var totalMaquina = 0, mermaMaquina = 0;
+    var detalle = ordenGrupos.map(function(claveGrupo){
+      var g = grupos[claveGrupo];
+      totalMaquina += g.total; mermaMaquina += g.merma;
+      var opTxt = g.op ? g.op : "sin OP asignada";
+      var descTxt = g.descripcion ? " — " + g.descripcion : "";
+      var mermaTxt = g.merma > 0 ? "  (merma " + g.merma + ")" : "";
+      var obsTxt = g.obs.length ? "\n       📝 " + g.obs.join(" / ") : "";
+      return "     " + opTxt + descTxt + "  *" + g.total + " u*" + mermaTxt + obsTxt;
+    });
+    if(t.op && opsConGrupo.indexOf(t.op) === -1){
+      var matchActual = buscarEnCatalogo(t.op);
+      var descActual = matchActual ? resolverModelo(matchActual, t.modeloIdx).descripcion : "";
+      detalle.push("     " + t.op + (descActual ? " — " + descActual : "") + "  *0 u*");
+    }
+    if(t.observaciones) detalle.push("     📝 (pendiente) " + t.observaciones);
+    lineas.push("▪️ *" + m.nombre + "*  ·  " + totalMaquina + " u" + (mermaMaquina > 0 ? " (merma " + mermaMaquina + ")" : ""));
+    lineas = lineas.concat(detalle);
+    return { lineas: lineas, total: totalMaquina, merma: mermaMaquina };
+  }
+
   function generarReporteProduccion(){
     var fecha = new Date().toLocaleString("es-PE", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"});
-    var activas = ordenarPorNombre(maquinas.filter(function(m){ return m.activa; }));
-
-    var mermaTotalTurno = 0;
-    activas.forEach(function(m){
-      var t = obtenerTurno(m.id);
-      (t.registros || []).forEach(function(r){ mermaTotalTurno += (r.merma || 0); });
-    });
+    var activas = ordenarPorAreaYNombre(maquinas.filter(function(m){ return m.activa; }), function(m){ return m.area; });
 
     var l = [];
-    l.push("*Reporte de Turno* — " + fecha);
-    if(mermaTotalTurno > 0) l.push("_Merma total del turno: " + mermaTotalTurno + "_");
-    l.push("");
+    l.push("🏭 *REPORTE DE TURNO*");
+    l.push("🗓️ " + fecha);
+    l.push("━━━━━━━━━━━━━━━");
     if(activas.length === 0){
+      l.push("");
       l.push("No hay máquinas activas.");
       return l.join("\n");
     }
-    activas.forEach(function(m){
-      var t = obtenerTurno(m.id);
-      if(t.motivoParada){
-        var obsTxt = t.observaciones ? " · " + t.observaciones : "";
-        l.push("• " + m.nombre + ": ⏸ " + t.motivoParada + obsTxt);
-        return;
-      }
-      if(!t.registros || t.registros.length === 0){
-        var match = buscarEnCatalogo(t.op);
-        var opTxt = t.op ? t.op : "sin OP asignada";
-        var descTxt = match ? (resolverModelo(match, t.modeloIdx).descripcion ? " — " + resolverModelo(match, t.modeloIdx).descripcion : "") : "";
-        var obsTxtVacio = t.observaciones ? " · " + t.observaciones : "";
-        l.push("• " + m.nombre + ": " + opTxt + descTxt + " (0 u)" + obsTxtVacio);
-        return;
-      }
-      var grupos = {};
-      var ordenGrupos = [];
-      var opsConGrupo = [];
-      t.registros.forEach(function(r){
-        var opKey = r.op || t.op || "";
-        var descKey = r.descripcion || "";
-        var claveGrupo = opKey + "||" + descKey;
-        if(!grupos[claveGrupo]){
-          var matchG = buscarEnCatalogo(opKey);
-          grupos[claveGrupo] = {
-            op: opKey,
-            descripcion: descKey || (matchG ? resolverModelo(matchG, t.modeloIdx).descripcion : ""),
-            total: 0,
-            merma: 0,
-            obs: []
-          };
-          ordenGrupos.push(claveGrupo);
-          if(opsConGrupo.indexOf(opKey) === -1) opsConGrupo.push(opKey);
-        }
-        grupos[claveGrupo].total += (r.cantidad || 0);
-        grupos[claveGrupo].merma += (r.merma || 0);
-        agregarObsRegistro(t, grupos[claveGrupo], r);
+
+    var totalGeneral = 0, mermaGeneral = 0;
+    AREAS_ORDEN.forEach(function(areaDef){
+      var deArea = activas.filter(function(m){ return (m.area||"") === areaDef.key; });
+      if(deArea.length === 0) return;
+      l.push("");
+      l.push("🔹 *" + areaDef.label + "*");
+      deArea.forEach(function(m){
+        var b = bloqueMaquinaWsp(m);
+        totalGeneral += b.total; mermaGeneral += b.merma;
+        l.push("");
+        l = l.concat(b.lineas);
       });
-      l.push("• " + m.nombre + ":");
-      ordenGrupos.forEach(function(claveGrupo){
-        var g = grupos[claveGrupo];
-        var opTxt = g.op ? g.op : "sin OP asignada";
-        var descTxt = g.descripcion ? " — " + g.descripcion : "";
-        var mermaTxt = g.merma > 0 ? " (merma " + g.merma + ")" : "";
-        l.push("   ↳ " + opTxt + descTxt + " (" + g.total + " u)" + mermaTxt + (g.obs.length ? " · " + g.obs.join(" / ") : ""));
-      });
-      if(t.op && opsConGrupo.indexOf(t.op) === -1){
-        var matchActual = buscarEnCatalogo(t.op);
-        var descActual = matchActual ? resolverModelo(matchActual, t.modeloIdx).descripcion : "";
-        l.push("   ↳ " + t.op + (descActual ? " — " + descActual : "") + " (0 u)");
-      }
-      if(t.observaciones) l.push("   (pendiente) " + t.observaciones);
     });
+
+    l.push("");
+    l.push("━━━━━━━━━━━━━━━");
+    l.push("✅ *Total turno: " + totalGeneral + " u*" + (mermaGeneral > 0 ? "   ⚠️ Merma: " + mermaGeneral + " u" : ""));
     return l.join("\n");
   }
 

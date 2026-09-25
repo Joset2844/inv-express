@@ -1826,106 +1826,114 @@
   ];
 
   // ---------- estilos reutilizables para los Excel exportados ----------
-  var XLSX_BORDE_FINO = { style: "thin", color: { rgb: "B7B7B7" } };
-  var XLSX_BORDES = { top: XLSX_BORDE_FINO, bottom: XLSX_BORDE_FINO, left: XLSX_BORDE_FINO, right: XLSX_BORDE_FINO };
-
-  function estiloCelda(ws, ref, s){
-    if(!ws[ref]) ws[ref] = { t: "z", v: "" };
-    ws[ref].s = s;
+  // ---------- Excel con formato real (colores, negrita, bordes) ----------
+  // La librería SheetJS que carga la app (xlsx.full.min.js, edición gratuita)
+  // NO escribe estilos dentro del .xlsx, así que el color/negrita se perdía
+  // siempre al exportar. Para tener formato real sin depender de otra
+  // librería externa, estos dos reportes se generan como un archivo
+  // "SpreadsheetML" (el formato XML de Excel 2003), que Excel abre con todo
+  // el formato aplicado. Se guarda con extensión .xls; Excel puede mostrar
+  // un aviso de "el formato del archivo difiere de la extensión" al abrirlo:
+  // es normal, solo hay que aceptar (Sí/Abrir de todas formas).
+  function xmlEsc(v){
+    return String(v === null || v === undefined ? "" : v)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
-  function estiloFila(ws, fila, colIni, colFin, s){
-    for(var c = colIni; c <= colFin; c++){
-      estiloCelda(ws, XLSX.utils.encode_cell({ r: fila, c: c }), s);
+  var XML_BORDE = '<Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#B7B7B7"/><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#B7B7B7"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#B7B7B7"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#B7B7B7"/></Borders>';
+  var XML_ESTILOS =
+    '<Styles>' +
+      '<Style ss:ID="sTitulo"><Font ss:Bold="1" ss:Size="14" ss:Color="#FFFFFF"/><Interior ss:Color="#12161F" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>' +
+      '<Style ss:ID="sArea"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#D97706" ss:Pattern="Solid"/><Alignment ss:Horizontal="Left" ss:Vertical="Center"/></Style>' +
+      '<Style ss:ID="sHead"><Font ss:Bold="1" ss:Color="#333333"/><Interior ss:Color="#F2F2F2" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>'+XML_BORDE+'</Style>' +
+      '<Style ss:ID="sCelda"><Alignment ss:Vertical="Center" ss:WrapText="1"/>'+XML_BORDE+'</Style>' +
+      '<Style ss:ID="sNum"><Alignment ss:Horizontal="Right" ss:Vertical="Center"/>'+XML_BORDE+'</Style>' +
+      '<Style ss:ID="sMerma"><Font ss:Color="#C0392B"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/>'+XML_BORDE+'</Style>' +
+      '<Style ss:ID="sTotal"><Font ss:Bold="1"/><Interior ss:Color="#FDEBD0" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/>'+XML_BORDE+'</Style>' +
+      '<Style ss:ID="sTotalNum"><Font ss:Bold="1"/><Interior ss:Color="#FDEBD0" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/>'+XML_BORDE+'</Style>' +
+      '<Style ss:ID="sTotalMerma"><Font ss:Bold="1" ss:Color="#C0392B"/><Interior ss:Color="#FDEBD0" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/>'+XML_BORDE+'</Style>' +
+    '</Styles>';
+
+  function celda(valor, estilo, tipo, mergeAcross){
+    var attrs = ' ss:StyleID="'+estilo+'"' + (mergeAcross ? ' ss:MergeAcross="'+mergeAcross+'"' : "");
+    return '<Cell'+attrs+'><Data ss:Type="'+(tipo||"String")+'">'+(tipo==="Number" ? (valor||0) : xmlEsc(valor))+'</Data></Cell>';
+  }
+  function filaXml(celdas){ return "<Row>"+celdas.join("")+"</Row>"; }
+  function envolverLibroXml(nombreHoja, columnas, filasXml){
+    var cols = columnas.map(function(w){ return '<Column ss:Width="'+w+'"/>'; }).join("");
+    return '<?xml version="1.0"?>' +
+      '<?mso-application progid="Excel.Sheet"?>' +
+      '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">' +
+      XML_ESTILOS +
+      '<Worksheet ss:Name="'+xmlEsc(nombreHoja)+'"><Table ss:DefaultColumnWidth="70">' + cols + filasXml.join("") + '</Table></Worksheet>' +
+      '</Workbook>';
+  }
+  function exportarXmlComoArchivo(xmlString, nombre){
+    var blob = new Blob(["\ufeff", xmlString], {type: "application/vnd.ms-excel"});
+    var compartido = false;
+    if(navigator.canShare && window.File){
+      try{
+        var archivo = new File([blob], nombre, {type:"application/vnd.ms-excel"});
+        if(navigator.canShare({files:[archivo]})){
+          navigator.share({files:[archivo], title: nombre})
+            .then(function(){ mostrarToast("ok","Excel exportado"); })
+            .catch(function(err){ if(err && err.name === "AbortError") return; intentarDescargaClasica(blob, nombre); });
+          compartido = true;
+        }
+      }catch(e){}
     }
+    if(!compartido) intentarDescargaClasica(blob, nombre);
   }
 
-  function construirLibroTurno(filas, titulo){
-    var aoa = [[titulo]];
-    var merges = [];
-    var fila = 0;
-    merges.push({ s:{r:0,c:0}, e:{r:0,c:7} });
-    fila = 1;
-
-    var filasTitulo = [0];
-    var filasArea = [];
-    var filasEncabezado = [];
-    var filasTotal = [];
+  function construirXmlTurno(filas, titulo){
+    var filasXml = [ filaXml([ celda(titulo,"sTitulo","String",7) ]) ];
 
     AREAS_ORDEN.forEach(function(areaDef){
       var filasDeArea = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
       if(filasDeArea.length === 0) return;
 
-      aoa.push([areaDef.label, "", "", "", "", "", "", ""]);
-      merges.push({ s:{r:fila,c:0}, e:{r:fila,c:7} });
-      filasArea.push(fila);
-      fila++;
-
-      aoa.push(["MAQUINA","CODIGO MAQUINA","OP'S","SAP","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]);
-      filasEncabezado.push(fila);
-      fila++;
+      filasXml.push(filaXml([ celda(areaDef.label,"sArea","String",7) ]));
+      filasXml.push(filaXml([
+        celda("MAQUINA","sHead"), celda("CODIGO MAQUINA","sHead"), celda("OP'S","sHead"), celda("SAP","sHead"),
+        celda("PRODUCTO","sHead"), celda("TOTAL PRODUCCION","sHead"), celda("MERMA","sHead"), celda("OBSERVACIONES","sHead")
+      ]));
 
       var totalArea = 0, mermaArea = 0;
-      var maquinaAnterior = null, inicioMerge = fila;
-      filasDeArea.forEach(function(f, idx){
-        aoa.push([f.maquina, f.codigoMaquina || "", f.op, f.sap || "", f.producto, f.total, f.merma, f.observaciones]);
-        totalArea += f.total;
-        mermaArea += f.merma;
-        if(f.maquina !== maquinaAnterior){
-          if(maquinaAnterior !== null && fila - inicioMerge > 1){
-            merges.push({ s:{r:inicioMerge,c:0}, e:{r:fila-1,c:0} });
-            merges.push({ s:{r:inicioMerge,c:1}, e:{r:fila-1,c:1} });
-          }
-          inicioMerge = fila;
-          maquinaAnterior = f.maquina;
-        }
-        fila++;
+      filasDeArea.forEach(function(f){
+        totalArea += (f.total||0); mermaArea += (f.merma||0);
+        filasXml.push(filaXml([
+          celda(f.maquina,"sCelda"), celda(f.codigoMaquina || "","sCelda"), celda(f.op,"sCelda"), celda(f.sap || "","sCelda"),
+          celda(f.producto,"sCelda"), celda(f.total||0,"sNum","Number"), celda(f.merma||0,"sMerma","Number"), celda(f.observaciones || "","sCelda")
+        ]));
       });
-      if(fila - inicioMerge > 1){
-        merges.push({ s:{r:inicioMerge,c:0}, e:{r:fila-1,c:0} });
-        merges.push({ s:{r:inicioMerge,c:1}, e:{r:fila-1,c:1} });
-      }
 
-      aoa.push(["TOTAL","","","","",totalArea,mermaArea,""]);
-      merges.push({ s:{r:fila,c:0}, e:{r:fila,c:4} });
-      filasTotal.push(fila);
-      fila++;
+      filasXml.push(filaXml([
+        celda("TOTAL","sTotal","String",4), celda("","sTotal"),
+        celda(totalArea,"sTotalNum","Number"), celda(mermaArea,"sTotalMerma","Number"), celda("","sTotal")
+      ]));
     });
 
-    var ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws["!merges"] = merges;
-    ws["!cols"] = [{wch:18},{wch:15},{wch:13},{wch:14},{wch:42},{wch:17},{wch:10},{wch:32}];
-    ws["!rows"] = [{hpt:22}];
-    ws["!views"] = [{ state: "frozen", ySplit: 2 }];
+    return envolverLibroXml("Turno", [130,110,95,105,300,120,75,230], filasXml);
+  }
 
-    // Título
-    filasTitulo.forEach(function(r){
-      estiloFila(ws, r, 0, 7, { font:{bold:true, sz:14, color:{rgb:"FFFFFF"}}, fill:{fgColor:{rgb:"12161F"}}, alignment:{horizontal:"center", vertical:"center"} });
+  function construirXmlResumen(filas, titulo){
+    var filasXml = [ filaXml([ celda(titulo,"sTitulo","String",5) ]) ];
+    filasXml.push(filaXml([
+      celda("MAQUINA","sHead"), celda("OP'S","sHead"), celda("PRODUCTO","sHead"),
+      celda("TOTAL PRODUCCION","sHead"), celda("MERMA","sHead"), celda("OBSERVACIONES","sHead")
+    ]));
+    var sumaTotal = 0, sumaMerma = 0;
+    filas.forEach(function(f){
+      sumaTotal += (f.total||0); sumaMerma += (f.merma||0);
+      filasXml.push(filaXml([
+        celda(f.maquina,"sCelda"), celda(f.op,"sCelda"), celda(f.producto,"sCelda"),
+        celda(f.total||0,"sNum","Number"), celda(f.merma||0,"sMerma","Number"), celda(f.observaciones || "","sCelda")
+      ]));
     });
-    // Encabezados de área
-    filasArea.forEach(function(r){
-      estiloFila(ws, r, 0, 7, { font:{bold:true, sz:11, color:{rgb:"FFFFFF"}}, fill:{fgColor:{rgb:"D97706"}}, alignment:{horizontal:"left", vertical:"center"} });
-    });
-    // Encabezados de columna
-    filasEncabezado.forEach(function(r){
-      estiloFila(ws, r, 0, 7, { font:{bold:true, sz:10, color:{rgb:"333333"}}, fill:{fgColor:{rgb:"F2F2F2"}}, alignment:{horizontal:"center", vertical:"center", wrapText:true}, border: XLSX_BORDES });
-    });
-    // Filas de datos: bordes + alinear numéricos a la derecha
-    for(var r = 0; r < aoa.length; r++){
-      if(filasTitulo.indexOf(r) !== -1 || filasArea.indexOf(r) !== -1 || filasEncabezado.indexOf(r) !== -1 || filasTotal.indexOf(r) !== -1) continue;
-      estiloFila(ws, r, 0, 7, { border: XLSX_BORDES, alignment:{vertical:"center", wrapText:true} });
-      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:5}), { border: XLSX_BORDES, alignment:{horizontal:"right", vertical:"center"} });
-      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:6}), { border: XLSX_BORDES, alignment:{horizontal:"right", vertical:"center"}, font:{color:{rgb:"C0392B"}} });
-    }
-    // Filas de subtotal por área
-    filasTotal.forEach(function(r){
-      estiloFila(ws, r, 0, 7, { font:{bold:true}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES, alignment:{vertical:"center"} });
-      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:5}), { font:{bold:true}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES, alignment:{horizontal:"right"} });
-      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:6}), { font:{bold:true, color:{rgb:"C0392B"}}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES, alignment:{horizontal:"right"} });
-    });
-
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Turno");
-    return wb;
+    filasXml.push(filaXml([
+      celda("","sTotal"), celda("","sTotal"), celda("TOTAL","sTotal"),
+      celda(sumaTotal,"sTotalNum","Number"), celda(sumaMerma,"sTotalMerma","Number"), celda("","sTotal")
+    ]));
+    return envolverLibroXml("Resumen", [130,95,300,120,75,230], filasXml);
   }
 
   function formatearFechaTurno(){
@@ -1941,135 +1949,11 @@
     var filas = filasTurnoParaExcel();
     if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para exportar"); return; }
     var fechaTxt = formatearFechaTurno();
-    var wb = construirLibroTurno(filas, "PRODUCCION " + etiquetaTurno().toUpperCase() + " " + fechaTxt);
-    var nombre = "turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-") + ".xlsx";
-    try{ exportarLibroComoArchivo(wb, nombre); }
+    var xml = construirXmlTurno(filas, "PRODUCCION " + etiquetaTurno().toUpperCase() + " " + fechaTxt);
+    var nombre = "turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-") + ".xls";
+    try{ exportarXmlComoArchivo(xml, nombre); }
     catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
   });
-
-  // ---------- enviar resumen de turno a Google Sheets ----------
-  var STORAGE_URL_APPSCRIPT = "inventario_url_appscript_turno";
-  var DEFAULT_URL_APPSCRIPT = "https://script.google.com/macros/s/AKfycbzx74npsb7NbQOkdsdGF3iRcALoFrAaPa2DJpLLfLLre3eRKM2AQB9lUAxAvVSLWjxG/exec";
-
-  function pedirUrlAppScript(){
-    var actual = "";
-    try{ actual = localStorage.getItem(STORAGE_URL_APPSCRIPT) || DEFAULT_URL_APPSCRIPT; }catch(e){ actual = DEFAULT_URL_APPSCRIPT; }
-    var nueva = prompt("Link de la Web App de Google Apps Script:", actual);
-    if(nueva === null) return null;
-    nueva = nueva.trim();
-    if(nueva){ try{ localStorage.setItem(STORAGE_URL_APPSCRIPT, nueva); }catch(e){} }
-    return nueva;
-  }
-
-  function urlConsultaAppScript(url, fecha, tipo){
-    var sep = url.indexOf("?") === -1 ? "?" : "&";
-    return url + sep + "fecha=" + encodeURIComponent(fecha) + "&tipo=" + encodeURIComponent(tipo);
-  }
-
-  $("btnEnviarSheets").addEventListener("click", function(){
-    var filas = filasTurnoParaExcel();
-    if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para enviar"); return; }
-    var url = "";
-    try{ url = localStorage.getItem(STORAGE_URL_APPSCRIPT) || DEFAULT_URL_APPSCRIPT; }catch(e){ url = DEFAULT_URL_APPSCRIPT; }
-    if(!url){
-      url = pedirUrlAppScript();
-      if(!url) return;
-    }
-
-    var fechaTxt = formatearFechaTurno();
-    var etiquetaTxt = etiquetaTurno();
-    var btn = $("btnEnviarSheets");
-    var textoOriginal = btn.textContent.trim();
-
-    function enviarDefinitivo(){
-      btn.disabled = true;
-      btn.innerHTML = btn.innerHTML.replace(textoOriginal, "Enviando...");
-      guardarTurnoEnSupabase(filas);
-      fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ fecha: fechaTxt, tipo: metaTurno.tipo, filas: filas })
-      })
-        .then(function(resp){
-          if(!resp.ok) throw new Error("HTTP " + resp.status);
-          return resp.json();
-        })
-        .then(function(data){
-          if(data && data.ok){
-            mostrarToast("ok", "Guardado en \"" + data.hoja + "\" (" + data.filas + " filas)");
-          } else {
-            mostrarToast("error", (data && data.error) ? data.error : "Google Sheets no confirmó el guardado");
-          }
-        })
-        .catch(function(){ mostrarToast("error","No se pudo enviar a Sheets. Revisa el link."); })
-        .finally(function(){
-          btn.disabled = false;
-          btn.innerHTML = btn.innerHTML.replace("Enviando...", textoOriginal);
-        });
-    }
-
-    // Antes de enviar, consulta si ya existe una hoja para esa fecha/turno
-    // (para no sobrescribir por error de fecha o turno mal seleccionados).
-    // Si la consulta falla (link viejo sin esta función, sin red, etc.),
-    // igual se muestra una confirmación básica en vez de bloquear el envío.
-    fetch(urlConsultaAppScript(url, fechaTxt, metaTurno.tipo), { cache: "no-store" })
-      .then(function(resp){ return resp.json(); })
-      .then(function(data){
-        var mensaje;
-        if(data && data.ok && data.existe){
-          mensaje = "Ya existe un envío guardado para:\n\n" + data.hoja + " (" + data.filasAprox + " filas)\n\n"
-            + "Vas a REEMPLAZARLO con los datos actuales (" + filas.length + " filas).\n\n"
-            + "¿Confirmas que la fecha y el turno son correctos?";
-        } else {
-          mensaje = "Vas a enviar el turno:\n\n" + fechaTxt + " - " + etiquetaTxt + " (" + filas.length + " filas)\n\n"
-            + "¿Confirmas que la fecha y el turno son correctos?";
-        }
-        if(confirm(mensaje)) enviarDefinitivo();
-      })
-      .catch(function(){
-        var mensaje = "Vas a enviar el turno:\n\n" + fechaTxt + " - " + etiquetaTxt + " (" + filas.length + " filas)\n\n"
-          + "¿Confirmas que la fecha y el turno son correctos?";
-        if(confirm(mensaje)) enviarDefinitivo();
-      });
-  });
-
-  $("btnEnviarSheets").addEventListener("dblclick", function(){
-    pedirUrlAppScript();
-  });
-
-  // ---------- resumen de producción ----------
-  var resumenContainer = $("resumenContainer"), emptyResumen = $("emptyResumen");
-
-  function construirLibroResumen(filas, titulo){
-    var aoa = [[titulo], ["MAQUINA","OP'S","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]];
-    var sumaTotal = 0, sumaMerma = 0;
-    filas.forEach(function(f){
-      aoa.push([f.maquina, f.op, f.producto, f.total, f.merma || 0, f.observaciones]);
-      sumaTotal += f.total;
-      sumaMerma += (f.merma || 0);
-    });
-    var filaTotal = aoa.length;
-    aoa.push(["", "", "TOTAL", sumaTotal, sumaMerma, ""]);
-    var ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:5} }];
-    ws["!cols"] = [{wch:18},{wch:14},{wch:42},{wch:17},{wch:10},{wch:32}];
-    ws["!views"] = [{ state: "frozen", ySplit: 2 }];
-
-    estiloFila(ws, 0, 0, 5, { font:{bold:true, sz:14, color:{rgb:"FFFFFF"}}, fill:{fgColor:{rgb:"12161F"}}, alignment:{horizontal:"center", vertical:"center"} });
-    estiloFila(ws, 1, 0, 5, { font:{bold:true, sz:10, color:{rgb:"333333"}}, fill:{fgColor:{rgb:"F2F2F2"}}, alignment:{horizontal:"center", vertical:"center", wrapText:true}, border: XLSX_BORDES });
-    for(var r = 2; r < filaTotal; r++){
-      estiloFila(ws, r, 0, 5, { border: XLSX_BORDES, alignment:{vertical:"center", wrapText:true} });
-      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:3}), { border: XLSX_BORDES, alignment:{horizontal:"right", vertical:"center"} });
-      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:4}), { border: XLSX_BORDES, alignment:{horizontal:"right", vertical:"center"}, font:{color:{rgb:"C0392B"}} });
-    }
-    estiloFila(ws, filaTotal, 0, 5, { font:{bold:true}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES });
-    estiloCelda(ws, XLSX.utils.encode_cell({r:filaTotal,c:3}), { font:{bold:true}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES, alignment:{horizontal:"right"} });
-    estiloCelda(ws, XLSX.utils.encode_cell({r:filaTotal,c:4}), { font:{bold:true, color:{rgb:"C0392B"}}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES, alignment:{horizontal:"right"} });
-
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Resumen");
-    return wb;
-  }
 
   function renderResumen(){
     resumenContainer.innerHTML = "";
@@ -2092,9 +1976,9 @@
     var filas = filasTurnoParaExcel();
     if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para exportar"); return; }
     var fechaTxt = new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
-    var wb = construirLibroResumen(filas, "PRODUCCION TURNO DIA " + fechaTxt);
-    var nombre = "resumen_turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-") + ".xlsx";
-    try{ exportarLibroComoArchivo(wb, nombre); }
+    var xml = construirXmlResumen(filas, "PRODUCCION TURNO DIA " + fechaTxt);
+    var nombre = "resumen_turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-") + ".xls";
+    try{ exportarXmlComoArchivo(xml, nombre); }
     catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
   });
 
@@ -3117,8 +3001,8 @@
       btnExcel.style.cssText = "background:#1F7A45;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:.7rem;font-weight:600;cursor:pointer;";
       btnExcel.addEventListener("click", function(){
         if(!h.filas || h.filas.length === 0){ mostrarToast("error","Este turno no tiene filas guardadas"); return; }
-        var wb = construirLibroTurno(h.filas, "PRODUCCION TURNO " + fTxt);
-        exportarLibroComoArchivo(wb, "turno_" + h.fecha.slice(0,10) + ".xlsx");
+        var xml = construirXmlTurno(h.filas, "PRODUCCION TURNO " + fTxt);
+        exportarXmlComoArchivo(xml, "turno_" + h.fecha.slice(0,10) + ".xls");
       });
       var btnBorrar = document.createElement("button");
       btnBorrar.style.cssText = "background:none;border:none;color:var(--red);cursor:pointer;padding:4px;";
@@ -3616,8 +3500,8 @@
       }
       btn(esMio ? "Ver / Editar" : "Ver", "var(--amber)", function(){ abrirEditorHistorial(rec, esMio); });
       btn("Excel","#4ADE80", function(){
-        exportarLibroComoArchivo(construirLibroTurno(filas, "PRODUCCION TURNO " + (rec.tipo==="noche"?"NOCHE":"DIA") + " " + fechaCorta(rec.fecha)),
-          "turno_" + rec.fecha + "_" + rec.tipo + ".xlsx");
+        exportarXmlComoArchivo(construirXmlTurno(filas, "PRODUCCION TURNO " + (rec.tipo==="noche"?"NOCHE":"DIA") + " " + fechaCorta(rec.fecha)),
+          "turno_" + rec.fecha + "_" + rec.tipo + ".xls");
       });
       btn("Migración","var(--amber-text)", function(){ exportarMigracion(filas, rec.fecha, rec.tipo); });
       btn("Imprimir","#93C5FD", function(){ imprimirHistorial(rec, filas); });

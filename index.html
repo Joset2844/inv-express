@@ -199,7 +199,7 @@
       display:grid; grid-template-columns:repeat(2,1fr); gap:10px; align-items:start;
     }
     #listaContainer .item-card{ margin-bottom:0; }
-    .empty-list{ grid-column:1 / -1; }
+    .empty-list, .area-sep{ grid-column:1 / -1; }
   }
   @media (min-width:1750px){
     #maquinasContainer, #produccionContainer, #hdbContainer, #listaContainer{
@@ -2366,7 +2366,7 @@
         var areaActual = item.area || "";
         if(areaAnterior !== null && areaActual !== areaAnterior){
           var sep = document.createElement("div");
-          sep.style.cssText = "height:1px;background:var(--border);margin:12px 0;";
+          sep.className = "area-sep"; sep.style.cssText = "height:1px;background:var(--border);margin:12px 0;";
           maquinasContainer.appendChild(sep);
         }
         areaAnterior = areaActual;
@@ -2948,7 +2948,7 @@
       var areaActual = m.area || "";
       if(areaAnterior !== null && areaActual !== areaAnterior){
         var sep = document.createElement("div");
-        sep.style.cssText = "height:1px;background:var(--border);margin:14px 0;";
+        sep.className = "area-sep"; sep.style.cssText = "height:1px;background:var(--border);margin:14px 0;";
         produccionContainer.appendChild(sep);
       }
       areaAnterior = areaActual;
@@ -3706,7 +3706,7 @@
       var g = grupos[key];
       if(areaAnteriorEd !== null && g.area !== areaAnteriorEd){
         var sep = document.createElement("div");
-        sep.style.cssText = "height:1px;background:var(--border);margin:10px 0;";
+        sep.className = "area-sep"; sep.style.cssText = "height:1px;background:var(--border);margin:10px 0;";
         c.appendChild(sep);
       }
       areaAnteriorEd = g.area;

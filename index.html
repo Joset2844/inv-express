@@ -1653,7 +1653,7 @@
       var nombre = "inventario_"+hoy+".xlsx";
       var mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-      var wbArray = XLSX.write(wb, {bookType:"xlsx", type:"array"});
+      var wbArray = XLSX.write(wb, {bookType:"xlsx", type:"array", cellStyles:true});
       var blob = new Blob([wbArray], {type: mime});
 
       var compartido = false;
@@ -1694,7 +1694,7 @@
 
   function exportarLibroComoArchivo(wb, nombre){
     var mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-    var wbArray = XLSX.write(wb, {bookType:"xlsx", type:"array"});
+    var wbArray = XLSX.write(wb, {bookType:"xlsx", type:"array", cellStyles:true});
     var blob = new Blob([wbArray], {type: mime});
     var compartido = false;
     if(navigator.canShare && window.File){
@@ -1825,6 +1825,20 @@
     { key: "", label: "SIN AREA ASIGNADA" }
   ];
 
+  // ---------- estilos reutilizables para los Excel exportados ----------
+  var XLSX_BORDE_FINO = { style: "thin", color: { rgb: "B7B7B7" } };
+  var XLSX_BORDES = { top: XLSX_BORDE_FINO, bottom: XLSX_BORDE_FINO, left: XLSX_BORDE_FINO, right: XLSX_BORDE_FINO };
+
+  function estiloCelda(ws, ref, s){
+    if(!ws[ref]) ws[ref] = { t: "z", v: "" };
+    ws[ref].s = s;
+  }
+  function estiloFila(ws, fila, colIni, colFin, s){
+    for(var c = colIni; c <= colFin; c++){
+      estiloCelda(ws, XLSX.utils.encode_cell({ r: fila, c: c }), s);
+    }
+  }
+
   function construirLibroTurno(filas, titulo){
     var aoa = [[titulo]];
     var merges = [];
@@ -1832,21 +1846,27 @@
     merges.push({ s:{r:0,c:0}, e:{r:0,c:7} });
     fila = 1;
 
+    var filasTitulo = [0];
+    var filasArea = [];
+    var filasEncabezado = [];
+    var filasTotal = [];
+
     AREAS_ORDEN.forEach(function(areaDef){
-      var filasArea = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
-      if(filasArea.length === 0) return;
+      var filasDeArea = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
+      if(filasDeArea.length === 0) return;
 
       aoa.push([areaDef.label, "", "", "", "", "", "", ""]);
       merges.push({ s:{r:fila,c:0}, e:{r:fila,c:7} });
+      filasArea.push(fila);
       fila++;
 
       aoa.push(["MAQUINA","CODIGO MAQUINA","OP'S","SAP","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]);
+      filasEncabezado.push(fila);
       fila++;
 
-      var inicioDatos = fila;
       var totalArea = 0, mermaArea = 0;
       var maquinaAnterior = null, inicioMerge = fila;
-      filasArea.forEach(function(f, idx){
+      filasDeArea.forEach(function(f, idx){
         aoa.push([f.maquina, f.codigoMaquina || "", f.op, f.sap || "", f.producto, f.total, f.merma, f.observaciones]);
         totalArea += f.total;
         mermaArea += f.merma;
@@ -1867,12 +1887,42 @@
 
       aoa.push(["TOTAL","","","","",totalArea,mermaArea,""]);
       merges.push({ s:{r:fila,c:0}, e:{r:fila,c:4} });
+      filasTotal.push(fila);
       fila++;
     });
 
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws["!merges"] = merges;
-    ws["!cols"] = [{wch:16},{wch:14},{wch:12},{wch:14},{wch:40},{wch:16},{wch:10},{wch:28}];
+    ws["!cols"] = [{wch:18},{wch:15},{wch:13},{wch:14},{wch:42},{wch:17},{wch:10},{wch:32}];
+    ws["!rows"] = [{hpt:22}];
+    ws["!views"] = [{ state: "frozen", ySplit: 2 }];
+
+    // Título
+    filasTitulo.forEach(function(r){
+      estiloFila(ws, r, 0, 7, { font:{bold:true, sz:14, color:{rgb:"FFFFFF"}}, fill:{fgColor:{rgb:"12161F"}}, alignment:{horizontal:"center", vertical:"center"} });
+    });
+    // Encabezados de área
+    filasArea.forEach(function(r){
+      estiloFila(ws, r, 0, 7, { font:{bold:true, sz:11, color:{rgb:"FFFFFF"}}, fill:{fgColor:{rgb:"D97706"}}, alignment:{horizontal:"left", vertical:"center"} });
+    });
+    // Encabezados de columna
+    filasEncabezado.forEach(function(r){
+      estiloFila(ws, r, 0, 7, { font:{bold:true, sz:10, color:{rgb:"333333"}}, fill:{fgColor:{rgb:"F2F2F2"}}, alignment:{horizontal:"center", vertical:"center", wrapText:true}, border: XLSX_BORDES });
+    });
+    // Filas de datos: bordes + alinear numéricos a la derecha
+    for(var r = 0; r < aoa.length; r++){
+      if(filasTitulo.indexOf(r) !== -1 || filasArea.indexOf(r) !== -1 || filasEncabezado.indexOf(r) !== -1 || filasTotal.indexOf(r) !== -1) continue;
+      estiloFila(ws, r, 0, 7, { border: XLSX_BORDES, alignment:{vertical:"center", wrapText:true} });
+      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:5}), { border: XLSX_BORDES, alignment:{horizontal:"right", vertical:"center"} });
+      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:6}), { border: XLSX_BORDES, alignment:{horizontal:"right", vertical:"center"}, font:{color:{rgb:"C0392B"}} });
+    }
+    // Filas de subtotal por área
+    filasTotal.forEach(function(r){
+      estiloFila(ws, r, 0, 7, { font:{bold:true}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES, alignment:{vertical:"center"} });
+      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:5}), { font:{bold:true}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES, alignment:{horizontal:"right"} });
+      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:6}), { font:{bold:true, color:{rgb:"C0392B"}}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES, alignment:{horizontal:"right"} });
+    });
+
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Turno");
     return wb;
@@ -1998,10 +2048,24 @@
       sumaTotal += f.total;
       sumaMerma += (f.merma || 0);
     });
+    var filaTotal = aoa.length;
     aoa.push(["", "", "TOTAL", sumaTotal, sumaMerma, ""]);
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:5} }];
-    ws["!cols"] = [{wch:16},{wch:14},{wch:40},{wch:16},{wch:10},{wch:30}];
+    ws["!cols"] = [{wch:18},{wch:14},{wch:42},{wch:17},{wch:10},{wch:32}];
+    ws["!views"] = [{ state: "frozen", ySplit: 2 }];
+
+    estiloFila(ws, 0, 0, 5, { font:{bold:true, sz:14, color:{rgb:"FFFFFF"}}, fill:{fgColor:{rgb:"12161F"}}, alignment:{horizontal:"center", vertical:"center"} });
+    estiloFila(ws, 1, 0, 5, { font:{bold:true, sz:10, color:{rgb:"333333"}}, fill:{fgColor:{rgb:"F2F2F2"}}, alignment:{horizontal:"center", vertical:"center", wrapText:true}, border: XLSX_BORDES });
+    for(var r = 2; r < filaTotal; r++){
+      estiloFila(ws, r, 0, 5, { border: XLSX_BORDES, alignment:{vertical:"center", wrapText:true} });
+      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:3}), { border: XLSX_BORDES, alignment:{horizontal:"right", vertical:"center"} });
+      estiloCelda(ws, XLSX.utils.encode_cell({r:r,c:4}), { border: XLSX_BORDES, alignment:{horizontal:"right", vertical:"center"}, font:{color:{rgb:"C0392B"}} });
+    }
+    estiloFila(ws, filaTotal, 0, 5, { font:{bold:true}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES });
+    estiloCelda(ws, XLSX.utils.encode_cell({r:filaTotal,c:3}), { font:{bold:true}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES, alignment:{horizontal:"right"} });
+    estiloCelda(ws, XLSX.utils.encode_cell({r:filaTotal,c:4}), { font:{bold:true, color:{rgb:"C0392B"}}, fill:{fgColor:{rgb:"FDEBD0"}}, border: XLSX_BORDES, alignment:{horizontal:"right"} });
+
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Resumen");
     return wb;

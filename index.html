@@ -3300,15 +3300,34 @@
       return r.json().then(function(data){
         if(!r.ok) throw new Error(data.error_description || data.msg || ("HTTP " + r.status));
         var nombreUsuario = data.user.email.split("@")[0];
-        sbGuardarSesion({ access_token: data.access_token, user_id: data.user.id, email: data.user.email, usuario: nombreUsuario });
+        sbGuardarSesion({ access_token: data.access_token, refresh_token: data.refresh_token, user_id: data.user.id, email: data.user.email, usuario: nombreUsuario });
         return data;
       });
     });
   }
 
+  // Renueva el access_token usando el refresh_token, sin pedir contraseña de nuevo.
+  var sbRenovandoPromesa = null;
+  function sbRenovarSesion(cfg){
+    if(!sbSesion || !sbSesion.refresh_token) return Promise.reject(new Error("sin refresh_token"));
+    if(sbRenovandoPromesa) return sbRenovandoPromesa;
+    sbRenovandoPromesa = fetch(cfg.url + "/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      headers: { "apikey": cfg.key, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: sbSesion.refresh_token })
+    }).then(function(r){
+      return r.json().then(function(data){
+        if(!r.ok) throw new Error(data.error_description || data.msg || ("HTTP " + r.status));
+        sbGuardarSesion({ access_token: data.access_token, refresh_token: data.refresh_token, user_id: data.user.id, email: data.user.email, usuario: data.user.email.split("@")[0] });
+        return sbSesion;
+      });
+    }).finally(function(){ sbRenovandoPromesa = null; });
+    return sbRenovandoPromesa;
+  }
+
   function sbLogout(){ sbGuardarSesion(null); }
 
-  function sbFetch(cfg, ruta, opts){
+  function sbFetch(cfg, ruta, opts, _reintentado){
     opts = opts || {};
     var headers = { "apikey": cfg.key, "Authorization": "Bearer " + (sbSesion ? sbSesion.access_token : cfg.key) };
     if(opts.json) headers["Content-Type"] = "application/json";
@@ -3318,6 +3337,15 @@
       body: opts.json ? JSON.stringify(opts.json) : undefined
     }).then(function(r){
       if(!r.ok) return r.text().then(function(t){
+        // Token vencido: intenta renovar en silencio (sin pedir contraseña) y reintentar UNA vez.
+        if(r.status === 401 && sbSesion && !_reintentado){
+          return sbRenovarSesion(cfg).then(function(){
+            return sbFetch(cfg, ruta, opts, true);
+          }).catch(function(){
+            sbGuardarSesion(null);
+            throw new Error("Sesión vencida, inicia sesión de nuevo");
+          });
+        }
         if(r.status === 401) sbGuardarSesion(null);
         throw new Error("HTTP " + r.status + " " + t);
       });

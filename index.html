@@ -3290,7 +3290,7 @@
     sbFetch(cfg, "turnos?select=fecha,updated_at,created_by&fecha=eq." + fecha + "&tipo=eq." + tipo)
       .then(function(ex){
         var existente = ex && ex[0];
-        if(existente && existente.created_by && existente.created_by !== sbSesion.user_id){
+        if(existente && existente.created_by && existente.created_by !== sbSesion.user_id && sbSesion.usuario !== "admin"){
           mostrarToast("error","Ese turno pertenece a otro usuario, no lo puedes sobrescribir"); return;
         }
         var msg = existente
@@ -3333,7 +3333,7 @@
     sbFetch(cfg, "turnos?select=created_by&fecha=eq." + fecha + "&tipo=eq." + tipo)
       .then(function(ex){
         var existente = ex && ex[0];
-        if(existente && existente.created_by && existente.created_by !== sbSesion.user_id){
+        if(existente && existente.created_by && existente.created_by !== sbSesion.user_id && sbSesion.usuario !== "admin"){
           mostrarToast("error","Ese turno (" + formatearFechaTurno() + " - " + etiquetaTurno() + ") es de otro usuario, no se sobrescribió el historial. Revisa fecha/turno.");
           return;
         }
@@ -3380,7 +3380,8 @@
       card.style.cssText = "flex-direction:column;align-items:stretch;";
       var top = document.createElement("div");
       top.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;";
-      var esMio = rec.created_by && sbSesion && rec.created_by === sbSesion.user_id;
+      var esAdmin = sbSesion && sbSesion.usuario === "admin";
+      var esMio = esAdmin || (rec.created_by && sbSesion && rec.created_by === sbSesion.user_id);
       var autor = rec.created_by_email ? rec.created_by_email.split("@")[0] : "desconocido";  // usuario simple, sin dominio
       top.innerHTML = '<div><span class="mono" style="font-weight:600;">'+fechaCorta(rec.fecha)+'</span> · '+(rec.tipo==="noche"?"Noche":"Día")+' <span style="color:var(--muted);font-size:.72rem;">· '+filas.length+' filas · <strong style="color:var(--amber);">'+tot+' u</strong> · '+(esMio ? '<span style="color:var(--green);">tuyo</span>' : 'de '+escapeHtml(autor))+'</span></div>';
       var acc = document.createElement("div");

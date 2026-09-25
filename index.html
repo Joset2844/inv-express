@@ -1759,12 +1759,14 @@
         t.registros.forEach(function(r){
           var opKey = r.op || t.op || "";
           var descKey = r.descripcion || "";
-          var claveGrupo = opKey + "||" + descKey;
+          var pliegoKey = r.pliego || "";
+          var claveGrupo = opKey + "||" + descKey + "||" + pliegoKey;
           if(!grupos[claveGrupo]){
             var match = buscarEnCatalogo(opKey);
+            var descBase = descKey || (match ? resolverModelo(match, -1).descripcion : "");
             grupos[claveGrupo] = {
               op: opKey,
-              descripcion: descKey || (match ? resolverModelo(match, -1).descripcion : ""),
+              descripcion: descBase + (pliegoKey ? " - Pliego " + pliegoKey : ""),
               sap: r.sap || (match ? (match.sap || "") : ""),
               total: 0,
               merma: 0,
@@ -2414,9 +2416,10 @@
   function obtenerTurno(maquinaId){
     var t = turno.find(function(x){ return x.maquinaId === maquinaId; });
     if(!t){
-      t = { maquinaId: maquinaId, op: "", objetivo: null, motivoParada: "", observaciones: "", modeloIdx: -1, registros: [] };
+      t = { maquinaId: maquinaId, op: "", objetivo: null, motivoParada: "", observaciones: "", modeloIdx: -1, pliego: "", registros: [] };
       turno.push(t);
     }
+    if(typeof t.pliego === "undefined") t.pliego = "";
     return t;
   }
 
@@ -2476,7 +2479,7 @@
       } else if(t.op){
         var match = buscarEnCatalogo(t.op);
         var descTxtEncabezado = match ? resolverModelo(match, t.modeloIdx).descripcion : "";
-        subEl.textContent = t.op + (descTxtEncabezado ? " — " + descTxtEncabezado : "");
+        subEl.textContent = t.op + (descTxtEncabezado ? " — " + descTxtEncabezado : "") + (t.pliego ? " (Pliego " + t.pliego + ")" : "");
       } else {
         subEl.textContent = "Sin OP asignada";
       }
@@ -2809,7 +2812,7 @@
         var spanCant = document.createElement("span");
         spanCant.className = "mono";
         spanCant.style.color = "var(--amber)";
-        spanCant.textContent = "+" + r.cantidad + " u" + (r.merma ? " (merma " + r.merma + ")" : "");
+        spanCant.textContent = "+" + r.cantidad + " u" + (r.pliego ? " · Pliego " + r.pliego : "") + (r.merma ? " (merma " + r.merma + ")" : "");
         var btnDelReg = document.createElement("button");
         btnDelReg.style.cssText = "background:none;border:none;color:var(--red);cursor:pointer;padding:0 0 0 8px;";
         btnDelReg.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>';
@@ -2862,6 +2865,7 @@
         op: currentOp,
         descripcion: descMatch,
         sap: sapMatch,
+        pliego: t.pliego || "",
         cantidad: cantidad,
         merma: merma,
         observacion: t.observaciones || "",
@@ -2880,6 +2884,30 @@
       renderRegistros();
       mostrarToast("ok","Producción registrada");
     });
+
+    // Selector compacto de "pliego" (solo máquinas PP): una misma OP puede
+    // separarse en pliego 1..10, cada uno se registra y reporta aparte.
+    if(maquina.tipoProducto === "pp"){
+      var pliegoSelect = document.createElement("select");
+      pliegoSelect.title = "Pliego";
+      pliegoSelect.style.cssText = "flex:0 0 78px;padding:8px 4px;border-radius:6px;border:1px solid var(--border-input);font-size:.8rem;font-weight:600;outline:none;background:var(--panel-alt);color:var(--text);text-align:center;";
+      var optNinguno = document.createElement("option");
+      optNinguno.value = ""; optNinguno.textContent = "Único";
+      optNinguno.selected = !t.pliego;
+      pliegoSelect.appendChild(optNinguno);
+      for(var pn = 1; pn <= 10; pn++){
+        var opt = document.createElement("option");
+        opt.value = pn; opt.textContent = "Pliego " + pn;
+        if((t.pliego || "") === pn) opt.selected = true;
+        pliegoSelect.appendChild(opt);
+      }
+      pliegoSelect.addEventListener("change", function(){
+        t.pliego = pliegoSelect.value ? parseInt(pliegoSelect.value, 10) : "";
+        guardarTurno();
+        actualizarEncabezado();
+      });
+      filaCantidad.appendChild(pliegoSelect);
+    }
 
     filaCantidad.appendChild(cantInput);
     registrarWrap.appendChild(filaCantidad);
@@ -3092,12 +3120,14 @@
     t.registros.forEach(function(r){
       var opKey = r.op || t.op || "";
       var descKey = r.descripcion || "";
-      var claveGrupo = opKey + "||" + descKey;
+      var pliegoKey = r.pliego || "";
+      var claveGrupo = opKey + "||" + descKey + "||" + pliegoKey;
       if(!grupos[claveGrupo]){
         var matchG = buscarEnCatalogo(opKey);
+        var descBaseG = descKey || (matchG ? resolverModelo(matchG, t.modeloIdx).descripcion : "");
         grupos[claveGrupo] = {
           op: opKey,
-          descripcion: descKey || (matchG ? resolverModelo(matchG, t.modeloIdx).descripcion : ""),
+          descripcion: descBaseG + (pliegoKey ? " - Pliego " + pliegoKey : ""),
           total: 0, merma: 0, obs: []
         };
         ordenGrupos.push(claveGrupo);

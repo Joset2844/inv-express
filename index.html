@@ -3438,6 +3438,7 @@
   function abrirEditorHistorial(rec, editable){
     hdbEdit = { fecha: rec.fecha, tipo: rec.tipo, filas: JSON.parse(JSON.stringify(rec.filas || [])), editable: !!editable };
     hdbDirty = false;
+    hdbExpandidos = {};
     $("hdbEditorTitulo").textContent = fechaCorta(rec.fecha) + " · " + (rec.tipo === "noche" ? "Noche" : "Día") + (editable ? "" : " (solo lectura)");
     $("btnHdbGuardar").classList.toggle("hidden", !editable);
     $("btnHdbAgregarFila").classList.toggle("hidden", !editable);
@@ -3451,9 +3452,13 @@
     $("hdbEditorTotal").textContent = t + " u";
   }
 
+  var hdbExpandidos = {};
+
   function renderEditorFilas(){
     var c = $("hdbFilasEditor");
     c.innerHTML = "";
+    var editable = hdbEdit.editable;
+
     function campo(f, label, key, numerico){
       var w = document.createElement("div");
       w.className = "field"; w.style.marginBottom = "8px";
@@ -3465,7 +3470,7 @@
       inp.disabled = !editable;
       inp.addEventListener("input", function(){
         f[key] = numerico ? (parseInt(inp.value,10) || 0) : inp.value;
-        hdbDirty = true; actualizarTotalEditor();
+        hdbDirty = true; actualizarTotalEditor(); actualizarResumenGrupos();
       });
       w.appendChild(l); w.appendChild(inp);
       return w;
@@ -3475,13 +3480,13 @@
       w.className = "field"; w.style.marginBottom = "8px";
       var l = document.createElement("label"); l.textContent = label;
       var sel = document.createElement("select");
+      sel.disabled = !editable;
       opciones.forEach(function(o){
         var op = document.createElement("option");
         op.value = o[0]; op.textContent = o[1];
         if((f[key] || "") === o[0]) op.selected = true;
         sel.appendChild(op);
       });
-      sel.disabled = !editable;
       sel.addEventListener("change", function(){ f[key] = sel.value; hdbDirty = true; });
       w.appendChild(l); w.appendChild(sel);
       return w;
@@ -3490,8 +3495,7 @@
       var d = document.createElement("div"); d.className = "row2";
       d.appendChild(a); d.appendChild(b); return d;
     }
-    // Campo OP con autocompletado del catálogo: al elegir una OP,
-    // rellena Producto y SAP con lo que haya en el catálogo actual.
+
     function campoOpConCatalogo(f){
       var w = document.createElement("div");
       w.className = "field"; w.style.marginBottom = "8px"; w.style.position = "relative";
@@ -3516,7 +3520,7 @@
       function renderSug(){
         var q = inp.value.trim().toLowerCase();
         if(!q){ sug.classList.add("hidden"); sug.innerHTML=""; return; }
-        var matches = catalogo.filter(function(c){ return c.op.toLowerCase().indexOf(q) !== -1; }).slice(0,6);
+        var matches = catalogo.filter(function(cItem){ return cItem.op.toLowerCase().indexOf(q) !== -1; }).slice(0,6);
         if(matches.length === 0){ sug.classList.add("hidden"); sug.innerHTML=""; return; }
         sug.innerHTML = "";
         matches.forEach(function(m){
@@ -3529,18 +3533,16 @@
         });
         sug.classList.remove("hidden");
       }
-      inp.addEventListener("input", function(){
-        f.op = inp.value; hdbDirty = true; renderSug();
-      });
+      inp.addEventListener("input", function(){ f.op = inp.value; hdbDirty = true; renderSug(); });
       inp.addEventListener("focus", renderSug);
       inp.addEventListener("blur", function(){ setTimeout(function(){ sug.classList.add("hidden"); }, 150); });
       return w;
     }
-    var editable = hdbEdit.editable;
-    hdbEdit.filas.forEach(function(f, i){
+
+    function crearTarjetaFila(f, i){
       var card = document.createElement("div");
       card.className = "item-card";
-      card.style.cssText = "flex-direction:column;align-items:stretch;";
+      card.style.cssText = "flex-direction:column;align-items:stretch;background:var(--panel-alt);";
       card.appendChild(par(campoOpConCatalogo(f), campo(f,"SAP","sap")));
       var matchModelos = buscarEnCatalogo(f.op);
       if(matchModelos && matchModelos.modelos && matchModelos.modelos.length > 1){
@@ -3552,15 +3554,14 @@
           chip.textContent = label;
           chip.disabled = !editable;
           chip.style.cssText = "padding:5px 10px;border-radius:14px;border:1px solid var(--border-input);font-size:.68rem;font-weight:600;cursor:pointer;background:var(--panel-alt);color:var(--muted);";
-          chip.addEventListener("click", function(){ aplicarEnFila(matchModelos, idx); });
+          chip.addEventListener("click", function(){
+            var mo = resolverModelo(matchModelos, idx);
+            f.producto = mo.descripcion || f.producto;
+            f.sap = mo.sap || "";
+            hdbDirty = true;
+            renderEditorFilas();
+          });
           return chip;
-        }
-        function aplicarEnFila(item, idx){
-          var mo = resolverModelo(item, idx);
-          f.producto = mo.descripcion || f.producto;
-          f.sap = mo.sap || "";
-          hdbDirty = true;
-          renderEditorFilas();
         }
         chipsWrap.appendChild(crearChipModeloEditor("Total (todos)", -1));
         matchModelos.modelos.forEach(function(mo, idx){
@@ -3571,7 +3572,6 @@
         });
         card.appendChild(chipsWrap);
       }
-      card.appendChild(par(campo(f,"Máquina","maquina"), campo(f,"Código máquina","codigoMaquina")));
       card.appendChild(campo(f,"Producto","producto"));
       card.appendChild(par(campo(f,"Total","total",true), campo(f,"Merma","merma",true)));
       card.appendChild(par(
@@ -3579,24 +3579,97 @@
         selector(f,"Área","area",[["","Sin área"],["vasos_envases","Vasos y Envases"],["papel_carton","Papel y Cartón"]])
       ));
       card.appendChild(campo(f,"Observaciones","observaciones"));
-      var del = document.createElement("button");
-      if(!editable) del.classList.add("hidden");
-      del.textContent = "Eliminar fila";
-      del.style.cssText = "background:none;border:1px solid var(--red);color:var(--red);padding:6px;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;";
-      del.addEventListener("click", function(){
-        if(!confirm("¿Eliminar esta fila?")) return;
-        hdbEdit.filas.splice(i, 1); hdbDirty = true; renderEditorFilas();
-      });
-      card.appendChild(del);
-      c.appendChild(card);
+      if(editable){
+        var del = document.createElement("button");
+        del.textContent = "Eliminar fila";
+        del.style.cssText = "background:none;border:1px solid var(--red);color:var(--red);padding:6px;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;margin-top:4px;";
+        del.addEventListener("click", function(){
+          if(!confirm("¿Eliminar esta fila?")) return;
+          hdbEdit.filas.splice(i, 1); hdbDirty = true; renderEditorFilas();
+        });
+        card.appendChild(del);
+      }
+      return card;
+    }
+
+    // ---- agrupar por máquina ----
+    var grupos = {}, ordenGrupos = [];
+    hdbEdit.filas.forEach(function(f, i){
+      var key = f.maquina || "(sin máquina)";
+      if(!grupos[key]){ grupos[key] = { nombre: key, codigoMaquina: f.codigoMaquina || "", indices: [] }; ordenGrupos.push(key); }
+      grupos[key].indices.push(i);
     });
+
+    function actualizarResumenGrupos(){
+      ordenGrupos.forEach(function(key){
+        var g = grupos[key];
+        if(!g || !g._badge) return;
+        var total = g.indices.reduce(function(a,i){ return a + (hdbEdit.filas[i].total||0); }, 0);
+        g._badge.textContent = total + " u · " + g.indices.length + " OP";
+      });
+    }
+
+    ordenGrupos.forEach(function(key){
+      var g = grupos[key];
+      var wrap = document.createElement("div");
+      wrap.className = "item-card";
+      wrap.style.cssText = "flex-direction:column;align-items:stretch;padding:12px 14px;";
+
+      var header = document.createElement("div");
+      header.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;";
+      var izq = document.createElement("div");
+      izq.innerHTML = '<div class="mono" style="font-weight:600;font-size:.9rem;color:var(--text);">'+escapeHtml(g.nombre)+'</div>'
+        + (g.codigoMaquina ? '<div style="font-size:.7rem;color:var(--muted);">Código: '+escapeHtml(g.codigoMaquina)+'</div>' : '');
+      var der = document.createElement("div");
+      der.style.cssText = "display:flex;align-items:center;gap:8px;";
+      var badge = document.createElement("span");
+      badge.className = "mono";
+      badge.style.cssText = "font-size:.78rem;font-weight:600;color:var(--amber);";
+      g._badge = badge;
+      var chevron = document.createElement("span");
+      var abierto = !!hdbExpandidos[key];
+      chevron.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
+      chevron.style.cssText = "color:var(--muted);display:flex;transition:transform .15s;" + (abierto ? "transform:rotate(180deg);" : "");
+      der.appendChild(badge); der.appendChild(chevron);
+      header.appendChild(izq); header.appendChild(der);
+      header.addEventListener("click", function(){
+        hdbExpandidos[key] = !hdbExpandidos[key];
+        renderEditorFilas();
+      });
+      wrap.appendChild(header);
+
+      if(abierto){
+        var cuerpo = document.createElement("div");
+        cuerpo.style.cssText = "margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;";
+        g.indices.forEach(function(i){ cuerpo.appendChild(crearTarjetaFila(hdbEdit.filas[i], i)); });
+        if(editable){
+          var btnAgregarOp = document.createElement("button");
+          btnAgregarOp.textContent = "+ Agregar OP a " + g.nombre;
+          btnAgregarOp.style.cssText = "background:var(--panel);color:var(--text);border:1px solid var(--border-input);padding:8px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;";
+          btnAgregarOp.addEventListener("click", function(){
+            hdbEdit.filas.push({ maquina:g.nombre, codigoMaquina:g.codigoMaquina, tipoProducto:"", area:"", op:"", sap:"", producto:"", total:0, merma:0, observaciones:"" });
+            hdbDirty = true; hdbExpandidos[key] = true; renderEditorFilas();
+          });
+          cuerpo.appendChild(btnAgregarOp);
+        }
+        wrap.appendChild(cuerpo);
+      }
+      c.appendChild(wrap);
+    });
+
+    actualizarResumenGrupos();
     actualizarTotalEditor();
   }
 
   $("btnHdbAgregarFila").addEventListener("click", function(){
     if(!hdbEdit) return;
-    hdbEdit.filas.push({ maquina:"", codigoMaquina:"", tipoProducto:"", area:"", op:"", sap:"", producto:"", total:0, merma:0, observaciones:"" });
+    var nombre = prompt("Nombre de la máquina para esta nueva fila:", "");
+    if(nombre === null) return;
+    nombre = nombre.trim();
+    if(!nombre){ mostrarToast("error","Ingresa un nombre de máquina"); return; }
+    hdbEdit.filas.push({ maquina:nombre, codigoMaquina:"", tipoProducto:"", area:"", op:"", sap:"", producto:"", total:0, merma:0, observaciones:"" });
     hdbDirty = true;
+    hdbExpandidos[nombre] = true;
     renderEditorFilas();
   });
 

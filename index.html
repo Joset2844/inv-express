@@ -2310,6 +2310,21 @@
     return arr.slice().sort(function(a,b){ return a.nombre.localeCompare(b.nombre, "es", {sensitivity:"base"}); });
   }
 
+  function rangoArea(area){
+    if(area === "vasos_envases") return 0;
+    if(area === "papel_carton") return 1;
+    return 2;
+  }
+  // Ordena por área (Vasos y Envases primero, Papel y Cartón después) y,
+  // dentro de cada área, alfabéticamente por nombre.
+  function ordenarPorAreaYNombre(arr, getArea){
+    return arr.slice().sort(function(a,b){
+      var ra = rangoArea(getArea(a)), rb = rangoArea(getArea(b));
+      if(ra !== rb) return ra - rb;
+      return a.nombre.localeCompare(b.nombre, "es", {sensitivity:"base"});
+    });
+  }
+
   var filtroAreaActual = "todas";
 
   function renderMaquinas(){
@@ -2319,7 +2334,20 @@
     totalMaquinasEl.textContent = maquinas.length;
     var hayBloqueadas = maquinas.some(function(m){ return m.bloqueada; });
     $("txtBloqueoTodo").textContent = hayBloqueadas ? "🔓 Desbloquear todo" : "🔒 Bloquear todo";
-    ordenarPorNombre(visibles).forEach(function(item){
+    var ordenadas = filtroAreaActual === "todas"
+      ? ordenarPorAreaYNombre(visibles, function(m){ return m.area; })
+      : ordenarPorNombre(visibles);
+    var areaAnterior = null;
+    ordenadas.forEach(function(item){
+      if(filtroAreaActual === "todas"){
+        var areaActual = item.area || "";
+        if(areaAnterior !== null && areaActual !== areaAnterior){
+          var sep = document.createElement("div");
+          sep.style.cssText = "height:1px;background:var(--border);margin:12px 0;";
+          maquinasContainer.appendChild(sep);
+        }
+        areaAnterior = areaActual;
+      }
       maquinasContainer.appendChild(crearTarjetaMaquina(item));
     });
   }
@@ -2890,9 +2918,17 @@
 
   function renderProduccion(){
     produccionContainer.innerHTML = "";
-    var activas = ordenarPorNombre(maquinas.filter(function(m){ return m.activa; }));
+    var activas = ordenarPorAreaYNombre(maquinas.filter(function(m){ return m.activa; }), function(m){ return m.area; });
     emptyProd.classList.toggle("hidden", activas.length > 0);
+    var areaAnterior = null;
     activas.forEach(function(m){
+      var areaActual = m.area || "";
+      if(areaAnterior !== null && areaActual !== areaAnterior){
+        var sep = document.createElement("div");
+        sep.style.cssText = "height:1px;background:var(--border);margin:14px 0;";
+        produccionContainer.appendChild(sep);
+      }
+      areaAnterior = areaActual;
       produccionContainer.appendChild(crearTarjetaTurno(m));
     });
     var totalGeneral = turno.reduce(function(acc,t){ return acc + totalProducido(t); }, 0);
@@ -3596,8 +3632,13 @@
     var grupos = {}, ordenGrupos = [];
     hdbEdit.filas.forEach(function(f, i){
       var key = f.maquina || "(sin máquina)";
-      if(!grupos[key]){ grupos[key] = { nombre: key, codigoMaquina: f.codigoMaquina || "", indices: [] }; ordenGrupos.push(key); }
+      if(!grupos[key]){ grupos[key] = { nombre: key, codigoMaquina: f.codigoMaquina || "", area: f.area || "", indices: [] }; ordenGrupos.push(key); }
       grupos[key].indices.push(i);
+    });
+    ordenGrupos.sort(function(ka, kb){
+      var ra = rangoArea(grupos[ka].area), rb = rangoArea(grupos[kb].area);
+      if(ra !== rb) return ra - rb;
+      return grupos[ka].nombre.localeCompare(grupos[kb].nombre, "es", {sensitivity:"base"});
     });
 
     function actualizarResumenGrupos(){
@@ -3609,8 +3650,15 @@
       });
     }
 
+    var areaAnteriorEd = null;
     ordenGrupos.forEach(function(key){
       var g = grupos[key];
+      if(areaAnteriorEd !== null && g.area !== areaAnteriorEd){
+        var sep = document.createElement("div");
+        sep.style.cssText = "height:1px;background:var(--border);margin:10px 0;";
+        c.appendChild(sep);
+      }
+      areaAnteriorEd = g.area;
       var wrap = document.createElement("div");
       wrap.className = "item-card";
       wrap.style.cssText = "flex-direction:column;align-items:stretch;padding:12px 14px;";

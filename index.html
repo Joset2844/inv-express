@@ -1000,7 +1000,12 @@
         mapaOps[op] = { op: op, cliente: cliente, cantidadTotal: 0, modelos: [] };
         ordenOps.push(op);
       }
-      mapaOps[op].modelos.push(modelo);
+      // Si esta misma OP ya trae un modelo idéntico (misma descripción y SAP),
+      // es una fila duplicada en la hoja: no la cuentes como un segundo modelo.
+      var yaExiste = mapaOps[op].modelos.some(function(mo){
+        return mo.descripcion === modelo.descripcion && (mo.sap || "") === (modelo.sap || "");
+      });
+      if(!yaExiste) mapaOps[op].modelos.push(modelo);
       var n = parseInt(cantidad, 10);
       if(!isNaN(n)) mapaOps[op].cantidadTotal += n;
     });
@@ -1046,7 +1051,10 @@
         mapaOps[op] = { op: op, cliente: base ? base.cliente : "", cantidadTotal: 0, modelos: [] };
         ordenOps.push(op);
       }
-      mapaOps[op].modelos.push(modelo);
+      var yaExisteModelo = mapaOps[op].modelos.some(function(mo){
+        return mo.modelo === modeloTxt && mo.sap === modelo.sap;
+      });
+      if(!yaExisteModelo) mapaOps[op].modelos.push(modelo);
       var n = parseInt(cantidad, 10);
       if(!isNaN(n)) mapaOps[op].cantidadTotal += n;
     });

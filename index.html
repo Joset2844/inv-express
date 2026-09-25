@@ -455,6 +455,10 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         Respaldar
       </button>
+      <button class="btn-clear" id="btnDesactivarTodas" style="color:var(--red);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+        Desactivar todas
+      </button>
       <button class="btn-clear" id="btnRestaurarMaquinas" style="color:var(--muted-2);">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
         Restaurar
@@ -2329,6 +2333,16 @@
     mostrarToast("ok", bloquear ? "Todas las máquinas bloqueadas" : "Todas las máquinas desbloqueadas");
   });
 
+  $("btnDesactivarTodas").addEventListener("click", function(){
+    var activas = maquinas.filter(function(m){ return m.activa; });
+    if(activas.length === 0){ mostrarToast("error","No hay máquinas activas"); return; }
+    if(!confirm("¿Desactivar las " + activas.length + " máquina(s) activa(s)?")) return;
+    maquinas.forEach(function(m){ m.activa = false; });
+    guardarMaquinas();
+    renderMaquinas();
+    mostrarToast("ok","Todas las máquinas desactivadas");
+  });
+
   document.querySelectorAll("#filtroAreaMaquinas .tab-btn").forEach(function(btn){
     btn.addEventListener("click", function(){
       document.querySelectorAll("#filtroAreaMaquinas .tab-btn").forEach(function(b){ b.classList.remove("active"); });
@@ -3476,12 +3490,87 @@
       var d = document.createElement("div"); d.className = "row2";
       d.appendChild(a); d.appendChild(b); return d;
     }
+    // Campo OP con autocompletado del catálogo: al elegir una OP,
+    // rellena Producto y SAP con lo que haya en el catálogo actual.
+    function campoOpConCatalogo(f){
+      var w = document.createElement("div");
+      w.className = "field"; w.style.marginBottom = "8px"; w.style.position = "relative";
+      var l = document.createElement("label"); l.textContent = "OP";
+      var inp = document.createElement("input");
+      inp.type = "text"; inp.className = "mono";
+      inp.value = f.op || "";
+      inp.disabled = !editable;
+      var sug = document.createElement("div");
+      sug.className = "suggest-box hidden";
+      w.appendChild(l); w.appendChild(inp); w.appendChild(sug);
+
+      function aplicar(item, modeloIdx){
+        f.op = item.op;
+        inp.value = item.op;
+        var mo = resolverModelo(item, typeof modeloIdx === "number" ? modeloIdx : -1);
+        f.producto = mo.descripcion || f.producto;
+        f.sap = mo.sap || "";
+        hdbDirty = true;
+        renderEditorFilas();
+      }
+      function renderSug(){
+        var q = inp.value.trim().toLowerCase();
+        if(!q){ sug.classList.add("hidden"); sug.innerHTML=""; return; }
+        var matches = catalogo.filter(function(c){ return c.op.toLowerCase().indexOf(q) !== -1; }).slice(0,6);
+        if(matches.length === 0){ sug.classList.add("hidden"); sug.innerHTML=""; return; }
+        sug.innerHTML = "";
+        matches.forEach(function(m){
+          var b = document.createElement("button");
+          b.className = "suggest-item";
+          b.innerHTML = '<div class="suggest-op mono">'+escapeHtml(m.op)+'</div><div class="suggest-meta">'+escapeHtml(descripcionCorta(m))+' · '+escapeHtml(m.cliente)+'</div>';
+          b.addEventListener("mousedown", function(ev){ ev.preventDefault(); aplicar(m); });
+          b.addEventListener("touchstart", function(ev){ ev.preventDefault(); aplicar(m); }, {passive:false});
+          sug.appendChild(b);
+        });
+        sug.classList.remove("hidden");
+      }
+      inp.addEventListener("input", function(){
+        f.op = inp.value; hdbDirty = true; renderSug();
+      });
+      inp.addEventListener("focus", renderSug);
+      inp.addEventListener("blur", function(){ setTimeout(function(){ sug.classList.add("hidden"); }, 150); });
+      return w;
+    }
     var editable = hdbEdit.editable;
     hdbEdit.filas.forEach(function(f, i){
       var card = document.createElement("div");
       card.className = "item-card";
       card.style.cssText = "flex-direction:column;align-items:stretch;";
-      card.appendChild(par(campo(f,"OP","op"), campo(f,"SAP","sap")));
+      card.appendChild(par(campoOpConCatalogo(f), campo(f,"SAP","sap")));
+      var matchModelos = buscarEnCatalogo(f.op);
+      if(matchModelos && matchModelos.modelos && matchModelos.modelos.length > 1){
+        var chipsWrap = document.createElement("div");
+        chipsWrap.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 10px;";
+        function crearChipModeloEditor(label, idx){
+          var chip = document.createElement("button");
+          chip.type = "button";
+          chip.textContent = label;
+          chip.disabled = !editable;
+          chip.style.cssText = "padding:5px 10px;border-radius:14px;border:1px solid var(--border-input);font-size:.68rem;font-weight:600;cursor:pointer;background:var(--panel-alt);color:var(--muted);";
+          chip.addEventListener("click", function(){ aplicarEnFila(matchModelos, idx); });
+          return chip;
+        }
+        function aplicarEnFila(item, idx){
+          var mo = resolverModelo(item, idx);
+          f.producto = mo.descripcion || f.producto;
+          f.sap = mo.sap || "";
+          hdbDirty = true;
+          renderEditorFilas();
+        }
+        chipsWrap.appendChild(crearChipModeloEditor("Total (todos)", -1));
+        matchModelos.modelos.forEach(function(mo, idx){
+          var activo = (f.producto === mo.descripcion);
+          var b = crearChipModeloEditor(mo.descripcion || ("Modelo " + (idx+1)), idx);
+          if(activo){ b.style.background = "var(--amber)"; b.style.color = "#12161F"; b.style.borderColor = "var(--amber)"; }
+          chipsWrap.appendChild(b);
+        });
+        card.appendChild(chipsWrap);
+      }
       card.appendChild(par(campo(f,"Máquina","maquina"), campo(f,"Código máquina","codigoMaquina")));
       card.appendChild(campo(f,"Producto","producto"));
       card.appendChild(par(campo(f,"Total","total",true), campo(f,"Merma","merma",true)));

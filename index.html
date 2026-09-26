@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Supervisión de Planta" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
@@ -1837,44 +1838,65 @@
   // el formato aplicado. Se guarda con extensión .xls; Excel puede mostrar
   // un aviso de "el formato del archivo difiere de la extensión" al abrirlo:
   // es normal, solo hay que aceptar (Sí/Abrir de todas formas).
-  function xmlEsc(v){
-    return String(v === null || v === undefined ? "" : v)
-      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  // ---------- Excel real (.xlsx), estructurado por área, sin color ----------
+  // La librería gratuita que usa la app (SheetJS) no puede escribir colores
+  // dentro de un .xlsx real. Un intento anterior generó un archivo XML que
+  // Excel de escritorio sí abría con colores, pero Excel para Android NO
+  // reconocía. Para que abra en cualquier dispositivo, se genera un .xlsx
+  // genuino: sin colores, pero con áreas separadas, encabezados y subtotales.
+  function construirLibroTurno(filas, titulo){
+    var aoa = [[titulo], []];
+    AREAS_ORDEN.forEach(function(areaDef){
+      var filasDeArea = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
+      if(filasDeArea.length === 0) return;
+      aoa.push([areaDef.label]);
+      aoa.push(["MAQUINA","CODIGO MAQUINA","OP'S","SAP","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]);
+      var totalArea = 0, mermaArea = 0;
+      filasDeArea.forEach(function(f){
+        totalArea += (f.total||0); mermaArea += (f.merma||0);
+        aoa.push([f.maquina, f.codigoMaquina || "", f.op, f.sap || "", f.producto, f.total||0, f.merma||0, f.observaciones || ""]);
+      });
+      aoa.push(["TOTAL","","","","",totalArea,mermaArea,""]);
+      aoa.push([]);
+    });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{wch:18},{wch:15},{wch:13},{wch:14},{wch:42},{wch:17},{wch:10},{wch:32}];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Turno");
+    return wb;
   }
-  var XML_BORDE = '<Borders><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#B7B7B7"/><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#B7B7B7"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#B7B7B7"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#B7B7B7"/></Borders>';
-  var XML_ESTILOS =
-    '<Styles>' +
-      '<Style ss:ID="sTitulo"><Font ss:Bold="1" ss:Size="14" ss:Color="#FFFFFF"/><Interior ss:Color="#12161F" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>' +
-      '<Style ss:ID="sArea"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#D97706" ss:Pattern="Solid"/><Alignment ss:Horizontal="Left" ss:Vertical="Center"/></Style>' +
-      '<Style ss:ID="sHead"><Font ss:Bold="1" ss:Color="#333333"/><Interior ss:Color="#F2F2F2" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>'+XML_BORDE+'</Style>' +
-      '<Style ss:ID="sCelda"><Alignment ss:Vertical="Center" ss:WrapText="1"/>'+XML_BORDE+'</Style>' +
-      '<Style ss:ID="sNum"><Alignment ss:Horizontal="Right" ss:Vertical="Center"/>'+XML_BORDE+'</Style>' +
-      '<Style ss:ID="sMerma"><Font ss:Color="#C0392B"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/>'+XML_BORDE+'</Style>' +
-      '<Style ss:ID="sTotal"><Font ss:Bold="1"/><Interior ss:Color="#FDEBD0" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/>'+XML_BORDE+'</Style>' +
-      '<Style ss:ID="sTotalNum"><Font ss:Bold="1"/><Interior ss:Color="#FDEBD0" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/>'+XML_BORDE+'</Style>' +
-      '<Style ss:ID="sTotalMerma"><Font ss:Bold="1" ss:Color="#C0392B"/><Interior ss:Color="#FDEBD0" ss:Pattern="Solid"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/>'+XML_BORDE+'</Style>' +
-    '</Styles>';
 
-  function celda(valor, estilo, tipo, mergeAcross){
-    var attrs = ' ss:StyleID="'+estilo+'"' + (mergeAcross ? ' ss:MergeAcross="'+mergeAcross+'"' : "");
-    return '<Cell'+attrs+'><Data ss:Type="'+(tipo||"String")+'">'+(tipo==="Number" ? (valor||0) : xmlEsc(valor))+'</Data></Cell>';
+  function construirLibroResumen(filas, titulo){
+    var aoa = [[titulo], [], ["MAQUINA","OP'S","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]];
+    var sumaTotal = 0, sumaMerma = 0;
+    filas.forEach(function(f){
+      aoa.push([f.maquina, f.op, f.producto, f.total||0, f.merma||0, f.observaciones || ""]);
+      sumaTotal += (f.total||0); sumaMerma += (f.merma||0);
+    });
+    aoa.push(["", "", "TOTAL", sumaTotal, sumaMerma, ""]);
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{wch:18},{wch:14},{wch:42},{wch:17},{wch:10},{wch:32}];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Resumen");
+    return wb;
   }
-  function filaXml(celdas){ return "<Row>"+celdas.join("")+"</Row>"; }
-  function envolverLibroXml(nombreHoja, columnas, filasXml){
-    var cols = columnas.map(function(w){ return '<Column ss:Width="'+w+'"/>'; }).join("");
-    return '<?xml version="1.0"?>' +
-      '<?mso-application progid="Excel.Sheet"?>' +
-      '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">' +
-      XML_ESTILOS +
-      '<Worksheet ss:Name="'+xmlEsc(nombreHoja)+'"><Table ss:DefaultColumnWidth="70">' + cols + filasXml.join("") + '</Table></Worksheet>' +
-      '</Workbook>';
+
+  // ---------- PRUEBA: Excel con color/negrita/bordes real, vía ExcelJS ----------
+  // Se carga desde una librería externa (ver <head>). Si por cualquier motivo
+  // no cargó (sin internet, CDN caído, bloqueado), se usa automáticamente la
+  // versión de arriba (sin color) para que el botón nunca deje de funcionar.
+  var EXCELJS_BORDE_FINO = { style: "thin", color: { argb: "FFB7B7B7" } };
+  var EXCELJS_BORDES = { top: EXCELJS_BORDE_FINO, bottom: EXCELJS_BORDE_FINO, left: EXCELJS_BORDE_FINO, right: EXCELJS_BORDE_FINO };
+
+  function exceljsDisponible(){
+    return typeof ExcelJS !== "undefined";
   }
-  function exportarXmlComoArchivo(xmlString, nombre){
-    var blob = new Blob(["\ufeff", xmlString], {type: "application/vnd.ms-excel"});
+
+  function descargarBlobExcel(blob, nombre){
     var compartido = false;
     if(navigator.canShare && window.File){
       try{
-        var archivo = new File([blob], nombre, {type:"application/vnd.ms-excel"});
+        var archivo = new File([blob], nombre, {type: blob.type});
         if(navigator.canShare({files:[archivo]})){
           navigator.share({files:[archivo], title: nombre})
             .then(function(){ mostrarToast("ok","Excel exportado"); })
@@ -1886,76 +1908,167 @@
     if(!compartido) intentarDescargaClasica(blob, nombre);
   }
 
-  function construirXmlTurno(filas, titulo){
-    var filasXml = [ filaXml([ celda(titulo,"sTitulo","String",7) ]) ];
+  function construirLibroTurnoColor(filas, titulo){
+    var wb = new ExcelJS.Workbook();
+    var ws = wb.addWorksheet("Turno");
+    ws.columns = [{width:18},{width:15},{width:13},{width:14},{width:42},{width:17},{width:10},{width:32}];
 
+    ws.mergeCells(1,1,1,8);
+    var rTitulo = ws.getRow(1);
+    rTitulo.height = 22;
+    rTitulo.getCell(1).value = titulo;
+    rTitulo.getCell(1).font = { bold:true, size:14, color:{argb:"FFFFFFFF"} };
+    rTitulo.getCell(1).fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FF12161F"} };
+    rTitulo.getCell(1).alignment = { horizontal:"center", vertical:"middle" };
+
+    var fila = 2;
     AREAS_ORDEN.forEach(function(areaDef){
       var filasDeArea = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
       if(filasDeArea.length === 0) return;
 
-      filasXml.push(filaXml([ celda(areaDef.label,"sArea","String",7) ]));
-      filasXml.push(filaXml([
-        celda("MAQUINA","sHead"), celda("CODIGO MAQUINA","sHead"), celda("OP'S","sHead"), celda("SAP","sHead"),
-        celda("PRODUCTO","sHead"), celda("TOTAL PRODUCCION","sHead"), celda("MERMA","sHead"), celda("OBSERVACIONES","sHead")
-      ]));
+      ws.mergeCells(fila,1,fila,8);
+      var rArea = ws.getRow(fila);
+      rArea.getCell(1).value = areaDef.label;
+      rArea.getCell(1).font = { bold:true, color:{argb:"FFFFFFFF"} };
+      rArea.getCell(1).fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFD97706"} };
+      fila++;
+
+      var headers = ["MAQUINA","CODIGO MAQUINA","OP'S","SAP","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"];
+      var rHead = ws.getRow(fila);
+      headers.forEach(function(h, i){
+        var c = rHead.getCell(i+1);
+        c.value = h;
+        c.font = { bold:true, color:{argb:"FF333333"} };
+        c.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFF2F2F2"} };
+        c.alignment = { horizontal:"center", vertical:"middle", wrapText:true };
+        c.border = EXCELJS_BORDES;
+      });
+      fila++;
 
       var totalArea = 0, mermaArea = 0;
       filasDeArea.forEach(function(f){
         totalArea += (f.total||0); mermaArea += (f.merma||0);
-        filasXml.push(filaXml([
-          celda(f.maquina,"sCelda"), celda(f.codigoMaquina || "","sCelda"), celda(f.op,"sCelda"), celda(f.sap || "","sCelda"),
-          celda(f.producto,"sCelda"), celda(f.total||0,"sNum","Number"), celda(f.merma||0,"sMerma","Number"), celda(f.observaciones || "","sCelda")
-        ]));
+        var r = ws.getRow(fila);
+        var vals = [f.maquina, f.codigoMaquina||"", f.op, f.sap||"", f.producto, f.total||0, f.merma||0, f.observaciones||""];
+        vals.forEach(function(v, i){
+          var c = r.getCell(i+1);
+          c.value = v;
+          c.border = EXCELJS_BORDES;
+          c.alignment = { vertical:"middle", wrapText:true };
+          if(i === 5) c.alignment = { horizontal:"right", vertical:"middle" };
+          if(i === 6){ c.alignment = { horizontal:"right", vertical:"middle" }; c.font = { color:{argb:"FFC0392B"} }; }
+        });
+        fila++;
       });
 
-      filasXml.push(filaXml([
-        celda("TOTAL","sTotal","String",4),
-        celda(totalArea,"sTotalNum","Number"), celda(mermaArea,"sTotalMerma","Number"), celda("","sTotal")
-      ]));
+      ws.mergeCells(fila,1,fila,5);
+      var rTot = ws.getRow(fila);
+      rTot.getCell(1).value = "TOTAL";
+      for(var i=1; i<=8; i++){
+        rTot.getCell(i).font = { bold:true };
+        rTot.getCell(i).fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFFDEBD0"} };
+        rTot.getCell(i).border = EXCELJS_BORDES;
+      }
+      rTot.getCell(6).value = totalArea;
+      rTot.getCell(6).alignment = { horizontal:"right" };
+      rTot.getCell(7).value = mermaArea;
+      rTot.getCell(7).alignment = { horizontal:"right" };
+      rTot.getCell(7).font = { bold:true, color:{argb:"FFC0392B"} };
+      fila++;
     });
 
-    return envolverLibroXml("Turno", [130,110,95,105,300,120,75,230], filasXml);
+    ws.views = [{ state:"frozen", ySplit:1 }];
+    return wb;
   }
 
-  function construirXmlResumen(filas, titulo){
-    var filasXml = [ filaXml([ celda(titulo,"sTitulo","String",5) ]) ];
-    filasXml.push(filaXml([
-      celda("MAQUINA","sHead"), celda("OP'S","sHead"), celda("PRODUCTO","sHead"),
-      celda("TOTAL PRODUCCION","sHead"), celda("MERMA","sHead"), celda("OBSERVACIONES","sHead")
-    ]));
-    var sumaTotal = 0, sumaMerma = 0;
+  function construirLibroResumenColor(filas, titulo){
+    var wb = new ExcelJS.Workbook();
+    var ws = wb.addWorksheet("Resumen");
+    ws.columns = [{width:18},{width:14},{width:42},{width:17},{width:10},{width:32}];
+
+    ws.mergeCells(1,1,1,6);
+    ws.getRow(1).getCell(1).value = titulo;
+    ws.getRow(1).getCell(1).font = { bold:true, size:14, color:{argb:"FFFFFFFF"} };
+    ws.getRow(1).getCell(1).fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FF12161F"} };
+    ws.getRow(1).getCell(1).alignment = { horizontal:"center", vertical:"middle" };
+
+    var headers = ["MAQUINA","OP'S","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"];
+    var rHead = ws.getRow(2);
+    headers.forEach(function(h, i){
+      var c = rHead.getCell(i+1);
+      c.value = h;
+      c.font = { bold:true, color:{argb:"FF333333"} };
+      c.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFF2F2F2"} };
+      c.alignment = { horizontal:"center", vertical:"middle", wrapText:true };
+      c.border = EXCELJS_BORDES;
+    });
+
+    var fila = 3, sumaTotal = 0, sumaMerma = 0;
     filas.forEach(function(f){
       sumaTotal += (f.total||0); sumaMerma += (f.merma||0);
-      filasXml.push(filaXml([
-        celda(f.maquina,"sCelda"), celda(f.op,"sCelda"), celda(f.producto,"sCelda"),
-        celda(f.total||0,"sNum","Number"), celda(f.merma||0,"sMerma","Number"), celda(f.observaciones || "","sCelda")
-      ]));
+      var r = ws.getRow(fila);
+      var vals = [f.maquina, f.op, f.producto, f.total||0, f.merma||0, f.observaciones||""];
+      vals.forEach(function(v, i){
+        var c = r.getCell(i+1);
+        c.value = v;
+        c.border = EXCELJS_BORDES;
+        c.alignment = { vertical:"middle", wrapText:true };
+        if(i === 3) c.alignment = { horizontal:"right", vertical:"middle" };
+        if(i === 4){ c.alignment = { horizontal:"right", vertical:"middle" }; c.font = { color:{argb:"FFC0392B"} }; }
+      });
+      fila++;
     });
-    filasXml.push(filaXml([
-      celda("","sTotal"), celda("","sTotal"), celda("TOTAL","sTotal"),
-      celda(sumaTotal,"sTotalNum","Number"), celda(sumaMerma,"sTotalMerma","Number"), celda("","sTotal")
-    ]));
-    return envolverLibroXml("Resumen", [130,95,300,120,75,230], filasXml);
+
+    var rTot = ws.getRow(fila);
+    rTot.getCell(3).value = "TOTAL";
+    for(var i=1; i<=6; i++){
+      rTot.getCell(i).font = { bold:true };
+      rTot.getCell(i).fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFFDEBD0"} };
+      rTot.getCell(i).border = EXCELJS_BORDES;
+    }
+    rTot.getCell(4).value = sumaTotal; rTot.getCell(4).alignment = { horizontal:"right" };
+    rTot.getCell(5).value = sumaMerma; rTot.getCell(5).alignment = { horizontal:"right" };
+    rTot.getCell(5).font = { bold:true, color:{argb:"FFC0392B"} };
+
+    ws.views = [{ state:"frozen", ySplit:2 }];
+    return wb;
   }
 
-  function formatearFechaTurno(){
-    var partes = (metaTurno.fecha || "").split("-");
-    if(partes.length !== 3) return new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
-    return partes[2] + "/" + partes[1] + "/" + partes[0];
-  }
-  function etiquetaTurno(){
-    return metaTurno.tipo === "noche" ? "Turno Noche" : "Turno Día";
+  // Intenta exportar con color (ExcelJS); si falla por cualquier motivo,
+  // exporta la versión plana y funcional de siempre (SheetJS), sin cortar el flujo.
+  function exportarTurnoConRespaldo(filas, titulo, nombreBase){
+    if(exceljsDisponible()){
+      try{
+        var wbColor = construirLibroTurnoColor(filas, titulo);
+        wbColor.xlsx.writeBuffer().then(function(buffer){
+          var blob = new Blob([buffer], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+          descargarBlobExcel(blob, nombreBase + ".xlsx");
+        }).catch(function(){
+          exportarLibroComoArchivo(construirLibroTurno(filas, titulo), nombreBase + ".xlsx");
+          mostrarToast("ok","Excel exportado (sin color: no se pudo generar con formato)");
+        });
+        return;
+      }catch(e){}
+    }
+    exportarLibroComoArchivo(construirLibroTurno(filas, titulo), nombreBase + ".xlsx");
   }
 
-  $("btnExportarTurnoExcel").addEventListener("click", function(){
-    var filas = filasTurnoParaExcel();
-    if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para exportar"); return; }
-    var fechaTxt = formatearFechaTurno();
-    var xml = construirXmlTurno(filas, "PRODUCCION " + etiquetaTurno().toUpperCase() + " " + fechaTxt);
-    var nombre = "turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-") + ".xls";
-    try{ exportarXmlComoArchivo(xml, nombre); }
-    catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
-  });
+  function exportarResumenConRespaldo(filas, titulo, nombreBase){
+    if(exceljsDisponible()){
+      try{
+        var wbColor = construirLibroResumenColor(filas, titulo);
+        wbColor.xlsx.writeBuffer().then(function(buffer){
+          var blob = new Blob([buffer], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+          descargarBlobExcel(blob, nombreBase + ".xlsx");
+        }).catch(function(){
+          exportarLibroComoArchivo(construirLibroResumen(filas, titulo), nombreBase + ".xlsx");
+          mostrarToast("ok","Excel exportado (sin color: no se pudo generar con formato)");
+        });
+        return;
+      }catch(e){}
+    }
+    exportarLibroComoArchivo(construirLibroResumen(filas, titulo), nombreBase + ".xlsx");
+  }
 
   function renderResumen(){
     resumenContainer.innerHTML = "";
@@ -1974,13 +2087,32 @@
     resumenContainer.innerHTML = html;
   }
 
+  function formatearFechaTurno(){
+    var partes = (metaTurno.fecha || "").split("-");
+    if(partes.length !== 3) return new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
+    return partes[2] + "/" + partes[1] + "/" + partes[0];
+  }
+  function etiquetaTurno(){
+    return metaTurno.tipo === "noche" ? "Turno Noche" : "Turno Día";
+  }
+
+  $("btnExportarTurnoExcel").addEventListener("click", function(){
+    var filas = filasTurnoParaExcel();
+    if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para exportar"); return; }
+    var fechaTxt = formatearFechaTurno();
+    var titulo = "PRODUCCION " + etiquetaTurno().toUpperCase() + " " + fechaTxt;
+    var nombreBase = "turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-");
+    try{ exportarTurnoConRespaldo(filas, titulo, nombreBase); }
+    catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
+  });
+
   $("btnExportarResumenExcel").addEventListener("click", function(){
     var filas = filasTurnoParaExcel();
     if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para exportar"); return; }
     var fechaTxt = new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
-    var xml = construirXmlResumen(filas, "PRODUCCION TURNO DIA " + fechaTxt);
-    var nombre = "resumen_turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-") + ".xls";
-    try{ exportarXmlComoArchivo(xml, nombre); }
+    var titulo = "PRODUCCION TURNO DIA " + fechaTxt;
+    var nombreBase = "resumen_turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-");
+    try{ exportarResumenConRespaldo(filas, titulo, nombreBase); }
     catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
   });
 
@@ -3032,8 +3164,7 @@
       btnExcel.style.cssText = "background:#1F7A45;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:.7rem;font-weight:600;cursor:pointer;";
       btnExcel.addEventListener("click", function(){
         if(!h.filas || h.filas.length === 0){ mostrarToast("error","Este turno no tiene filas guardadas"); return; }
-        var xml = construirXmlTurno(h.filas, "PRODUCCION TURNO " + fTxt);
-        exportarXmlComoArchivo(xml, "turno_" + h.fecha.slice(0,10) + ".xls");
+        exportarTurnoConRespaldo(h.filas, "PRODUCCION TURNO " + fTxt, "turno_" + h.fecha.slice(0,10));
       });
       var btnBorrar = document.createElement("button");
       btnBorrar.style.cssText = "background:none;border:none;color:var(--red);cursor:pointer;padding:4px;";
@@ -3533,8 +3664,8 @@
       }
       btn(esMio ? "Ver / Editar" : "Ver", "var(--amber)", function(){ abrirEditorHistorial(rec, esMio); });
       btn("Excel","#4ADE80", function(){
-        exportarXmlComoArchivo(construirXmlTurno(filas, "PRODUCCION TURNO " + (rec.tipo==="noche"?"NOCHE":"DIA") + " " + fechaCorta(rec.fecha)),
-          "turno_" + rec.fecha + "_" + rec.tipo + ".xls");
+        exportarTurnoConRespaldo(filas, "PRODUCCION TURNO " + (rec.tipo==="noche"?"NOCHE":"DIA") + " " + fechaCorta(rec.fecha),
+          "turno_" + rec.fecha + "_" + rec.tipo);
       });
       btn("Migración","var(--amber-text)", function(){ exportarMigracion(filas, rec.fecha, rec.tipo); });
       btn("Imprimir","#93C5FD", function(){ imprimirHistorial(rec, filas); });

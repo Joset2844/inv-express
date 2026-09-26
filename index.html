@@ -2110,15 +2110,39 @@
     emptyResumen.classList.toggle("hidden", filas.length > 0);
     if(filas.length === 0) return;
 
-    var sumaTotal = filas.reduce(function(acc,f){ return acc + f.total; }, 0);
-    var sumaMerma = filas.reduce(function(acc,f){ return acc + (f.merma || 0); }, 0);
-    var html = '<div class="table-wrap"><table><thead><tr><th>Máquina</th><th>OP</th><th>Producto</th><th>Total</th><th>Merma</th><th>Observaciones</th></tr></thead><tbody>';
-    filas.forEach(function(f){
-      html += '<tr><td class="mono" style="font-weight:600;color:var(--text);">'+escapeHtml(f.maquina)+'</td><td class="mono" style="color:var(--amber-text);font-weight:600;">'+(f.op ? escapeHtml(f.op) : "—")+'</td><td>'+(f.producto ? escapeHtml(f.producto) : "—")+'</td><td class="mono" style="font-weight:600;color:var(--amber);">'+f.total+'</td><td class="mono" style="color:var(--red);">'+(f.merma || 0)+'</td><td style="color:var(--muted-2);">'+(f.observaciones ? escapeHtml(f.observaciones) : "—")+'</td></tr>';
-    });
-    html += '<tr style="background:var(--panel-alt);"><td colspan="3" class="mono" style="font-weight:700;color:var(--text);">TOTAL</td><td class="mono" style="font-weight:700;color:var(--amber);">'+sumaTotal+'</td><td class="mono" style="font-weight:700;color:var(--red);">'+sumaMerma+'</td><td></td></tr>';
-    html += '</tbody></table></div>';
+    function tablaTipo(label, subset, conMigracion){
+      if(subset.length === 0) return "";
+      var sumaTotal = subset.reduce(function(acc,f){ return acc + f.total; }, 0);
+      var sumaMerma = subset.reduce(function(acc,f){ return acc + (f.merma || 0); }, 0);
+      var html = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:16px 0 8px;">'
+        + '<h3 style="margin:0;font-size:.8rem;color:var(--text);display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);"></span>'+label+'</h3>'
+        + (conMigracion ? '<button class="btn-clear" id="btnMigracionResumen" style="color:var(--amber-text);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Migración</button>' : '')
+        + '</div>';
+      html += '<div class="table-wrap"><table><thead><tr><th>Máquina</th><th>OP</th><th>Producto</th><th>Total</th><th>Merma</th><th>Observaciones</th></tr></thead><tbody>';
+      subset.forEach(function(f){
+        html += '<tr><td class="mono" style="font-weight:600;color:var(--text);">'+escapeHtml(f.maquina)+'</td><td class="mono" style="color:var(--amber-text);font-weight:600;">'+(f.op ? escapeHtml(f.op) : "—")+'</td><td>'+(f.producto ? escapeHtml(f.producto) : "—")+'</td><td class="mono" style="font-weight:600;color:var(--amber);">'+f.total+'</td><td class="mono" style="color:var(--red);">'+(f.merma || 0)+'</td><td style="color:var(--muted-2);">'+(f.observaciones ? escapeHtml(f.observaciones) : "—")+'</td></tr>';
+      });
+      html += '<tr style="background:var(--panel-alt);"><td colspan="3" class="mono" style="font-weight:700;color:var(--text);">TOTAL</td><td class="mono" style="font-weight:700;color:var(--amber);">'+sumaTotal+'</td><td class="mono" style="font-weight:700;color:var(--red);">'+sumaMerma+'</td><td></td></tr>';
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    var filasPP = filas.filter(function(f){ return f.tipoProducto === "pp"; });
+    var filasPT = filas.filter(function(f){ return f.tipoProducto === "pt"; });
+    var filasSinTipo = filas.filter(function(f){ return f.tipoProducto !== "pp" && f.tipoProducto !== "pt"; });
+
+    var html = "";
+    html += tablaTipo("Producto en Proceso (PP)", filasPP, false);
+    html += tablaTipo("Producto Terminado (PT)", filasPT, true);
+    html += tablaTipo("Sin tipo asignado", filasSinTipo, false);
     resumenContainer.innerHTML = html;
+
+    var btnMigResumen = $("btnMigracionResumen");
+    if(btnMigResumen){
+      btnMigResumen.addEventListener("click", function(){
+        exportarMigracion(filas, metaTurno.fecha, metaTurno.tipo);
+      });
+    }
   }
 
   function formatearFechaTurno(){
@@ -3703,7 +3727,7 @@
       });
       btn("Migración","var(--amber-text)", function(){ exportarMigracion(filas, rec.fecha, rec.tipo); });
       btn("Imprimir","#93C5FD", function(){ imprimirHistorial(rec, filas); });
-      if(esMio) btn("Borrar","var(--red)", function(){
+      if(esAdmin) btn("Borrar","var(--red)", function(){
         if(!confirm("¿Borrar " + fechaCorta(rec.fecha) + " - " + (rec.tipo==="noche"?"Noche":"Día") + " del historial?")) return;
         var cfg = configSb(false); if(!cfg) return;
         sbFetch(cfg, "turnos?fecha=eq." + rec.fecha + "&tipo=eq." + rec.tipo, {method:"DELETE"})

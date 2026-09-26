@@ -2981,6 +2981,9 @@
 
   $("btnReiniciarTurno").addEventListener("click", function(){
     if(turno.length === 0) return;
+    var totalActual = turno.reduce(function(acc,t){ return acc + totalProducido(t); }, 0);
+    var msg = "¿Reiniciar el turno?\n\nEsto borra lo registrado en pantalla (" + totalActual + " u en total).\n\nSe guardará una copia en Historial (dentro de esta pestaña) antes de borrar, pero no se sube a Supabase ni a Sheets automáticamente.\n\n¿Confirmas?";
+    if(!confirm(msg)) return;
     historial.unshift({
       id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
       fecha: new Date().toISOString(),

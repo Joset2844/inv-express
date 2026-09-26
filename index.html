@@ -2996,7 +2996,8 @@
         var f = new Date(r.fecha);
         var fTxt = f.toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit"}) + " " + f.toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"});
         var span = document.createElement("span");
-        span.textContent = fTxt + (r.op ? " (" + r.op + ")" : "");
+        var descLimpia = (r.descripcion || "").replace(/^[^A-Za-zÁÉÍÓÚÑÜáéíóúñü]+/, "").trim();
+        span.textContent = fTxt + (r.op ? " (" + r.op + ")" : "") + (descLimpia ? " — " + descLimpia : "");
         var wrapDer = document.createElement("span");
         wrapDer.style.cssText = "display:flex;align-items:center;";
         var spanCant = document.createElement("span");

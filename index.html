@@ -1846,21 +1846,42 @@
   // genuino: sin colores, pero con áreas separadas, encabezados y subtotales.
   function construirLibroTurno(filas, titulo){
     var aoa = [[titulo], []];
+    var merges = [];
+    var fila = 2; // 0-index de la fila (título=0, línea en blanco=1)
     AREAS_ORDEN.forEach(function(areaDef){
       var filasDeArea = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
       if(filasDeArea.length === 0) return;
       aoa.push([areaDef.label]);
+      fila++;
       aoa.push(["MAQUINA","CODIGO MAQUINA","OP'S","SAP","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]);
+      fila++;
       var totalArea = 0, mermaArea = 0;
-      filasDeArea.forEach(function(f){
+      var maquinaAnterior = null, inicioRun = fila;
+      filasDeArea.forEach(function(f, idx){
         totalArea += (f.total||0); mermaArea += (f.merma||0);
         aoa.push([f.maquina, f.codigoMaquina || "", f.op, f.sap || "", f.producto, f.total||0, f.merma||0, f.observaciones || ""]);
+        if(f.maquina !== maquinaAnterior){
+          if(maquinaAnterior !== null && fila - inicioRun > 1){
+            merges.push({ s:{r:inicioRun,c:0}, e:{r:fila-1,c:0} });
+            merges.push({ s:{r:inicioRun,c:1}, e:{r:fila-1,c:1} });
+          }
+          inicioRun = fila;
+          maquinaAnterior = f.maquina;
+        }
+        fila++;
+        if(idx === filasDeArea.length - 1 && fila - inicioRun > 1){
+          merges.push({ s:{r:inicioRun,c:0}, e:{r:fila-1,c:0} });
+          merges.push({ s:{r:inicioRun,c:1}, e:{r:fila-1,c:1} });
+        }
       });
       aoa.push(["TOTAL","","","","",totalArea,mermaArea,""]);
+      fila++;
       aoa.push([]);
+      fila++;
     });
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws["!cols"] = [{wch:18},{wch:15},{wch:13},{wch:14},{wch:42},{wch:17},{wch:10},{wch:32}];
+    ws["!merges"] = merges;
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Turno");
     return wb;
@@ -1946,7 +1967,8 @@
       fila++;
 
       var totalArea = 0, mermaArea = 0;
-      filasDeArea.forEach(function(f){
+      var maquinaAnterior = null, inicioRun = fila;
+      filasDeArea.forEach(function(f, idx){
         totalArea += (f.total||0); mermaArea += (f.merma||0);
         var r = ws.getRow(fila);
         var vals = [f.maquina, f.codigoMaquina||"", f.op, f.sap||"", f.producto, f.total||0, f.merma||0, f.observaciones||""];
@@ -1958,7 +1980,19 @@
           if(i === 5) c.alignment = { horizontal:"right", vertical:"middle" };
           if(i === 6){ c.alignment = { horizontal:"right", vertical:"middle" }; c.font = { color:{argb:"FFC0392B"} }; }
         });
+        if(f.maquina !== maquinaAnterior){
+          if(maquinaAnterior !== null && fila - inicioRun > 1){
+            ws.mergeCells(inicioRun,1,fila-1,1);
+            ws.mergeCells(inicioRun,2,fila-1,2);
+          }
+          inicioRun = fila;
+          maquinaAnterior = f.maquina;
+        }
         fila++;
+        if(idx === filasDeArea.length - 1 && fila - inicioRun > 1){
+          ws.mergeCells(inicioRun,1,fila-1,1);
+          ws.mergeCells(inicioRun,2,fila-1,2);
+        }
       });
 
       ws.mergeCells(fila,1,fila,5);

@@ -3829,7 +3829,7 @@
       w.appendChild(l); w.appendChild(inp);
       return w;
     }
-    function selector(f, label, key, opciones){
+    function selector(f, label, key, opciones, alCambiar){
       var w = document.createElement("div");
       w.className = "field"; w.style.marginBottom = "8px";
       var l = document.createElement("label"); l.textContent = label;
@@ -3841,13 +3841,48 @@
         if((f[key] || "") === o[0]) op.selected = true;
         sel.appendChild(op);
       });
-      sel.addEventListener("change", function(){ f[key] = sel.value; hdbDirty = true; });
+      sel.addEventListener("change", function(){
+        f[key] = sel.value;
+        hdbDirty = true;
+        actualizarTotalEditor(); actualizarResumenGrupos();
+        if(typeof alCambiar === "function") alCambiar();
+      });
       w.appendChild(l); w.appendChild(sel);
       return w;
     }
     function par(a, b){
       var d = document.createElement("div"); d.className = "row2";
       d.appendChild(a); d.appendChild(b); return d;
+    }
+
+    // Campo "Pliego" solo para filas PP: detecta el pliego actual leyendo el
+    // sufijo "- Pliego N" del texto de Producto, y lo reescribe al cambiarlo.
+    function campoPliego(f){
+      var w = document.createElement("div");
+      w.className = "field"; w.style.marginBottom = "8px";
+      var l = document.createElement("label"); l.textContent = "Pliego";
+      var sel = document.createElement("select");
+      sel.disabled = !editable;
+      var descBase = (f.producto || "").replace(/\s*-\s*Pliego\s*\d+\s*$/i, "");
+      var matchPliego = (f.producto || "").match(/-\s*Pliego\s*(\d+)\s*$/i);
+      var actual = matchPliego ? matchPliego[1] : "";
+      var optU = document.createElement("option");
+      optU.value = ""; optU.textContent = "Único";
+      optU.selected = !actual;
+      sel.appendChild(optU);
+      for(var pn = 1; pn <= 10; pn++){
+        var opt = document.createElement("option");
+        opt.value = pn; opt.textContent = "Pliego " + pn;
+        if(String(actual) === String(pn)) opt.selected = true;
+        sel.appendChild(opt);
+      }
+      sel.addEventListener("change", function(){
+        f.producto = descBase + (sel.value ? " - Pliego " + sel.value : "");
+        hdbDirty = true;
+        renderEditorFilas();
+      });
+      w.appendChild(l); w.appendChild(sel);
+      return w;
     }
 
     function campoOpConCatalogo(f){
@@ -3929,9 +3964,12 @@
       card.appendChild(campo(f,"Producto","producto"));
       card.appendChild(par(campo(f,"Total","total",true), campo(f,"Merma","merma",true)));
       card.appendChild(par(
-        selector(f,"Tipo","tipoProducto",[["","—"],["pp","PP"],["pt","PT"]]),
+        selector(f,"Tipo","tipoProducto",[["","—"],["pp","PP"],["pt","PT"]], function(){ renderEditorFilas(); }),
         selector(f,"Área","area",[["","Sin área"],["vasos_envases","Vasos y Envases"],["papel_carton","Papel y Cartón"]])
       ));
+      if(f.tipoProducto === "pp"){
+        card.appendChild(campoPliego(f));
+      }
       card.appendChild(campo(f,"Observaciones","observaciones"));
       if(editable){
         var del = document.createElement("button");

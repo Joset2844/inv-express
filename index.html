@@ -3603,6 +3603,31 @@
     });
   }
 
+  // Turno que corresponde AHORA según la hora: DIA 07:00-18:59 (misma fecha),
+  // NOCHE 19:00-06:59 (si es de madrugada, la fecha del turno es la del día anterior).
+  function turnoEsperadoAhora(){
+    var ahora = new Date();
+    var h = ahora.getHours();
+    var tipo = (h >= 7 && h < 19) ? "dia" : "noche";
+    var base = new Date(ahora.getTime());
+    if(h < 7) base.setDate(base.getDate() - 1);
+    var fecha = base.getFullYear() + "-" + String(base.getMonth()+1).padStart(2,"0") + "-" + String(base.getDate()).padStart(2,"0");
+    return { fecha: fecha, tipo: tipo };
+  }
+
+  // Devuelve el texto de advertencia si fecha/turno NO coinciden con el momento
+  // actual; cadena vacía si todo coincide. Solo se usa en el primer guardado.
+  function advertenciaTurnoDescuadrado(fecha, tipo){
+    var esp = turnoEsperadoAhora();
+    if(fecha === esp.fecha && tipo === esp.tipo) return "";
+    function etq(t){ return t === "noche" ? "Turno Noche" : "Turno Día"; }
+    return "⚠️ ATENCIÓN: la fecha/turno NO coincide con la hora actual.\n\n"
+      + "Vas a guardar:  " + fechaCorta(fecha) + " - " + etq(tipo) + "\n"
+      + "Ahora corresponde:  " + fechaCorta(esp.fecha) + " - " + etq(esp.tipo) + "\n\n"
+      + "Este sería el PRIMER registro de ese turno. Si lo guardas, la persona a quien sí le corresponde no podrá registrarlo (solo el admin puede liberarlo).\n\n"
+      + "¿Guardar de todas formas?";
+  }
+
   function exigirSesionHdb(){
     if(sbSesion) return true;
     mostrarToast("error","Inicia sesión en la pestaña Historial primero");
@@ -3621,9 +3646,10 @@
         if(existente && existente.created_by_email && existente.created_by_email !== sbSesion.email && sbSesion.usuario !== "admin"){
           mostrarToast("error","Ese turno pertenece a otro usuario, no lo puedes sobrescribir"); return;
         }
-        var msg = existente
+        var adv = existente ? "" : advertenciaTurnoDescuadrado(fecha, tipo);
+        var msg = adv ? adv : (existente
           ? "Ya existe " + formatearFechaTurno() + " - " + etiquetaTurno() + " en el historial.\n\nSe REEMPLAZARÁ con los datos actuales (" + filas.length + " filas).\n\n¿Confirmas fecha y turno?"
-          : "Guardar en historial:\n\n" + formatearFechaTurno() + " - " + etiquetaTurno() + " (" + filas.length + " filas)\n\n¿Confirmas fecha y turno?";
+          : "Guardar en historial:\n\n" + formatearFechaTurno() + " - " + etiquetaTurno() + " (" + filas.length + " filas)\n\n¿Confirmas fecha y turno?");
         if(!confirm(msg)) return;
         return sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
           method: "POST", json: [{ fecha: fecha, tipo: tipo, filas: filas, turno: turno, created_by: sbSesion.user_id, created_by_email: sbSesion.email, updated_at: new Date().toISOString() }],
@@ -3664,6 +3690,13 @@
         if(existente && existente.created_by_email && existente.created_by_email !== sbSesion.email && sbSesion.usuario !== "admin"){
           mostrarToast("error","Ese turno (" + formatearFechaTurno() + " - " + etiquetaTurno() + ") es de otro usuario, no se sobrescribió el historial. Revisa fecha/turno.");
           return;
+        }
+        if(!existente){
+          var adv = advertenciaTurnoDescuadrado(fecha, tipo);
+          if(adv && !confirm(adv)){
+            mostrarToast("error","Historial no guardado: la fecha/turno no coincide con la hora actual");
+            return;
+          }
         }
         return sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
           method: "POST",

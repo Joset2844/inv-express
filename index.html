@@ -666,6 +666,7 @@
       <select id="hdbTurno"><option value="">Todos</option><option value="dia">Día</option><option value="noche">Noche</option></select>
     </div>
     <button class="btn-add" id="btnHdbBuscar">Buscar</button>
+    <button class="btn-add hidden" id="btnHdbResumenVers" style="margin-top:8px;background:var(--panel-alt);color:var(--text);border:1px solid var(--border-input);">Resumen de versiones</button>
     <p style="font-size:.68rem;color:var(--muted);margin:8px 0 0;">Doble toque en "Buscar" para cambiar URL/clave de Supabase.</p>
   </div>
   <div id="hdbContainer"></div>
@@ -3461,6 +3462,7 @@
     $("hdbFiltros").classList.remove("hidden");
     $("hdbContainer").classList.remove("hidden");
     $("btnHdbLogout").textContent = "Salir (" + sbSesion.usuario + ")";
+    $("btnHdbResumenVers").classList.toggle("hidden", !esAdmin());
     buscarHistorialDB();
   }
 
@@ -3655,24 +3657,31 @@
     var cfg = configSb(false); if(!cfg) return;
     var fecha = metaTurno.fecha, tipo = metaTurno.tipo;
     var etiqueta = formatearFechaTurno() + " - " + etiquetaTurno();
-    var registro = { fecha: fecha, tipo: tipo, filas: filas, turno: turno, created_by: sbSesion.user_id, created_by_email: sbSesion.email, updated_at: new Date().toISOString() };
-    sbFetch(cfg, "turnos?select=fecha,filas&fecha=eq." + fecha + "&tipo=eq." + tipo)
+    var ahora = new Date().toISOString();
+    sbFetch(cfg, "turnos?select=*&fecha=eq." + fecha + "&tipo=eq." + tipo)
       .then(function(ex){
         var existente = ex && ex[0];
         if(existente){
-          if(!esAdmin()){ mostrarToast("error", etiqueta + " ya está guardado. Solo el admin puede reemplazarlo."); return; }
+          var admin = esAdmin();
+          var duenio = !!existente.created_by_email && existente.created_by_email === sbSesion.email;
+          if(!admin && !duenio){ mostrarToast("error","Ese turno pertenece a otro usuario; solo el admin puede reemplazarlo."); return; }
+          var horas = (Date.now() - new Date(existente.creado_en || existente.updated_at || 0).getTime()) / 3600000;
+          if(!admin && (isNaN(horas) || horas > 24)){
+            mostrarToast("error","Pasaron más de 24 h desde que se guardó " + etiqueta + ". Solo puedes editarlo desde Historial.");
+            return;
+          }
           if(!confirm("⚠ Ya existe " + etiqueta + ": " + totalFilas(existente.filas) + " u.\nSe REEMPLAZARÁ por " + totalFilas(filas) + " u (" + filas.length + " filas).\n\n¿Confirmas?")) return;
-          return sbFetch(cfg, "turnos?on_conflict=fecha,tipo", { method: "POST", json: [registro], prefer: "resolution=merge-duplicates,return=minimal" })
+          return sbFetch(cfg, "turnos?fecha=eq." + fecha + "&tipo=eq." + tipo, { method: "PATCH", json: { filas: filas, turno: turno, updated_at: ahora }, prefer: "return=minimal" })
             .then(function(){ mostrarToast("ok","Turno reemplazado en historial"); });
         }
         var adv = advertenciaTurnoDescuadrado(fecha, tipo);
         if(!confirm(adv ? adv : "Guardar en historial:\n\n" + etiqueta + " (" + filas.length + " filas, " + totalFilas(filas) + " u)\n\n¿Confirmas fecha y turno?")) return;
         // INSERT simple: si alguien lo creó en el ínterin, la BD responde 409 y NO sobrescribe.
-        return sbFetch(cfg, "turnos", { method: "POST", json: [registro], prefer: "return=minimal" })
+        return sbFetch(cfg, "turnos", { method: "POST", json: [{ fecha: fecha, tipo: tipo, filas: filas, turno: turno, created_by: sbSesion.user_id, created_by_email: sbSesion.email, updated_at: ahora }], prefer: "return=minimal" })
           .then(function(){ mostrarToast("ok","Guardado en historial"); });
       })
       .catch(function(err){
-        var m = /HTTP 409|duplicate|23505/.test(err.message) ? "Ese turno ya existe; solo el admin puede reemplazarlo" : "No se pudo guardar: " + err.message.slice(0,80);
+        var m = /HTTP 409|duplicate|23505/.test(err.message) ? "Ese turno ya existe; no se sobrescribió" : "No se pudo guardar: " + err.message.slice(0,80);
         mostrarToast("error", m);
       });
   }
@@ -3740,9 +3749,10 @@
       var top = document.createElement("div");
       top.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;";
       var esAdmin = sbSesion && sbSesion.usuario === "admin";
-      var esMio = esAdmin;
+      var duenio = !!(rec.created_by_email && sbSesion && rec.created_by_email === sbSesion.email);
+      var esMio = esAdmin || duenio;
       var autor = rec.created_by_email ? rec.created_by_email.split("@")[0] : "desconocido";  // usuario simple, sin dominio
-      top.innerHTML = '<div><span class="mono" style="font-weight:600;">'+fechaCorta(rec.fecha)+'</span> · '+(rec.tipo==="noche"?"Noche":"Día")+' <span style="color:var(--muted);font-size:.72rem;">· '+filas.length+' filas · <strong style="color:var(--amber);">'+tot+' u</strong> · '+('de '+escapeHtml(autor))+'</span></div>';
+      top.innerHTML = '<div><span class="mono" style="font-weight:600;">'+fechaCorta(rec.fecha)+'</span> · '+(rec.tipo==="noche"?"Noche":"Día")+' <span style="color:var(--muted);font-size:.72rem;">· '+filas.length+' filas · <strong style="color:var(--amber);">'+tot+' u</strong> · '+(duenio ? '<span style="color:var(--green);">tuyo</span>' : 'de '+escapeHtml(autor))+'</span></div>';
       var acc = document.createElement("div");
       acc.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;";
       function btn(txt, bg, fn){
@@ -3759,7 +3769,7 @@
       });
       btn("Migración","var(--amber-text)", function(){ exportarMigracion(filas, rec.fecha, rec.tipo); });
       btn("Imprimir","#93C5FD", function(){ imprimirHistorial(rec, filas); });
-      if(esAdmin) btn("Versiones","#C4B5FD", function(){ abrirVersiones(rec); });
+      if(esAdmin) btn("Versiones","#C4B5FD", function(){ abrirVersiones(rec, "lista"); });
       if(esAdmin) btn("Borrar","var(--red)", function(){
         if(!confirm("¿Borrar " + fechaCorta(rec.fecha) + " - " + (rec.tipo==="noche"?"Noche":"Día") + " del historial?")) return;
         var cfg = configSb(false); if(!cfg) return;
@@ -3813,7 +3823,7 @@
   }
 
   // ---------- versiones y recuperación (solo admin) ----------
-  function copiarTurnoA(filas, turnoData, fechaSug, tipoSug){
+  function copiarTurnoA(filas, turnoData, fechaSug, tipoSug, autorEmail){
     if(!esAdmin()){ mostrarToast("error","Solo el admin puede hacer esto"); return; }
     var f = prompt("Fecha destino (AAAA-MM-DD):", fechaSug); if(f === null) return;
     f = f.trim();
@@ -3828,49 +3838,147 @@
         ? "⚠ " + fechaCorta(f) + " " + t + " ya tiene " + totalFilas(e.filas) + " u y se reemplazará por " + totalFilas(filas) + " u (lo anterior queda archivado).\n\n¿Confirmas?"
         : "Crear " + fechaCorta(f) + " " + t + " con " + totalFilas(filas) + " u.\n\n¿Confirmas?";
       if(!confirm(msg)) return;
-      return sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
-        method: "POST",
-        json: [{ fecha: f, tipo: t, filas: filas, turno: turnoData || null, created_by: sbSesion.user_id, created_by_email: sbSesion.email, updated_at: new Date().toISOString() }],
-        prefer: "resolution=merge-duplicates,return=minimal"
-      }).then(function(){ mostrarToast("ok","Guardado en " + fechaCorta(f) + " " + t); });
+      var ahora = new Date().toISOString();
+      var peticion = e
+        ? sbFetch(cfg, "turnos?fecha=eq." + f + "&tipo=eq." + t, { method: "PATCH", json: { filas: filas, turno: turnoData || null, updated_at: ahora }, prefer: "return=minimal" })
+        : sbFetch(cfg, "turnos", { method: "POST", json: [{ fecha: f, tipo: t, filas: filas, turno: turnoData || null, created_by: sbSesion.user_id, created_by_email: autorEmail || sbSesion.email, updated_at: ahora }], prefer: "return=minimal" });
+      return peticion.then(function(){ mostrarToast("ok","Guardado en " + fechaCorta(f) + " " + t); });
     }).catch(function(err){ mostrarToast("error","No se pudo guardar: " + err.message.slice(0,80)); });
   }
 
-  function abrirVersiones(rec){
-    if(!esAdmin()) return;
-    var cfg = configSb(false); if(!cfg) return;
+  var versOrigen = "lista";
+  function mostrarPanelVersiones(){
     $("hdbFiltros").classList.add("hidden");
     $("hdbContainer").classList.add("hidden");
     $("hdbVersiones").classList.remove("hidden");
+  }
+  function kbDe(o){ try{ return Math.round(JSON.stringify(o).length / 1024); }catch(e){ return 0; } }
+  function fechaHoraCorta(iso){
+    return iso ? new Date(iso).toLocaleString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "—";
+  }
+  function crearBtn(cont, txt, bg, fn, color){
+    var x = document.createElement("button");
+    x.textContent = txt;
+    x.style.cssText = "background:"+bg+";color:"+(color||"#12161F")+";border:none;padding:5px 10px;border-radius:5px;font-size:.7rem;font-weight:600;cursor:pointer;";
+    x.addEventListener("click", fn);
+    cont.appendChild(x);
+  }
+
+  function abrirResumenVersiones(){
+    if(!esAdmin()) return;
+    var cfg = configSb(false); if(!cfg) return;
+    versOrigen = "lista";
+    mostrarPanelVersiones();
+    $("hdbVersTitulo").textContent = "Resumen de versiones";
+    var lista = $("hdbVersLista");
+    lista.innerHTML = '<div class="empty-list">Cargando…</div>';
+    sbFetch(cfg, "turnos_versiones?select=id,fecha,tipo,archivado_en,filas&order=archivado_en.desc&limit=500").then(function(vs){
+      vs = vs || [];
+      lista.innerHTML = "";
+      if(!vs.length){ lista.innerHTML = '<div class="empty-list">No hay versiones archivadas.</div>'; return; }
+      var grupos = {}, orden = [], kbTotal = 0;
+      vs.forEach(function(v){
+        var k = v.fecha + "|" + v.tipo;
+        if(!grupos[k]){ grupos[k] = { fecha:v.fecha, tipo:v.tipo, n:0, kb:0, ultima:v.archivado_en }; orden.push(k); }
+        var kb = kbDe(v.filas);
+        grupos[k].n++; grupos[k].kb += kb; kbTotal += kb;
+      });
+      var head = document.createElement("div");
+      head.className = "item-card";
+      head.style.cssText = "flex-direction:column;align-items:stretch;";
+      head.innerHTML = '<div style="font-size:.8rem;"><strong style="color:var(--amber);">' + vs.length + '</strong> versiones · ' + orden.length + ' turnos · ~' + kbTotal + ' KB' + (vs.length >= 500 ? ' <span style="color:var(--muted);">(solo las 500 más recientes)</span>' : '') + '</div>';
+      var accH = document.createElement("div");
+      accH.style.cssText = "display:flex;gap:6px;margin-top:8px;";
+      crearBtn(accH, "Borrar más antiguas de N días…", "var(--red)", function(){
+        var d = prompt("Borrar versiones archivadas hace más de cuántos días?", "30");
+        if(d === null) return;
+        d = parseInt(d, 10);
+        if(isNaN(d) || d < 1){ mostrarToast("error","Número de días inválido"); return; }
+        var corte = new Date(Date.now() - d * 86400000).toISOString();
+        if(!confirm("Se borrarán TODAS las versiones archivadas antes de " + fechaHoraCorta(corte) + ".\nNo se puede deshacer.\n\n¿Confirmas?")) return;
+        sbFetch(cfg, "turnos_versiones?archivado_en=lt." + encodeURIComponent(corte), {method:"DELETE"})
+          .then(function(){ mostrarToast("ok","Versiones antiguas eliminadas"); abrirResumenVersiones(); })
+          .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
+      }, "#fff");
+      head.appendChild(accH);
+      lista.appendChild(head);
+      orden.forEach(function(k){
+        var g = grupos[k];
+        var card = document.createElement("div");
+        card.className = "item-card";
+        card.style.cssText = "flex-direction:column;align-items:stretch;";
+        card.innerHTML = '<div><span class="mono" style="font-weight:600;">' + fechaCorta(g.fecha) + '</span> · ' + (g.tipo === "noche" ? "Noche" : "Día") + ' <span style="color:var(--muted-2);font-size:.75rem;">· ' + g.n + ' versión(es) · ~' + g.kb + ' KB · última ' + fechaHoraCorta(g.ultima) + '</span></div>';
+        var acc = document.createElement("div");
+        acc.style.cssText = "display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;";
+        crearBtn(acc, "Abrir", "var(--amber)", function(){
+          sbFetch(cfg, "turnos?select=fecha,tipo,filas,turno,created_by_email,updated_at&fecha=eq." + g.fecha + "&tipo=eq." + g.tipo).then(function(r){
+            var rec = (r && r[0]) || { fecha: g.fecha, tipo: g.tipo, sinActual: true };
+            abrirVersiones(rec, "resumen");
+          }).catch(function(err){ mostrarToast("error","No se pudo abrir: " + err.message.slice(0,80)); });
+        });
+        crearBtn(acc, "Borrar todas", "var(--red)", function(){
+          if(!confirm("¿Borrar las " + g.n + " versión(es) archivadas de " + fechaCorta(g.fecha) + " " + g.tipo + "?\nEl turno actual NO se toca.")) return;
+          sbFetch(cfg, "turnos_versiones?fecha=eq." + g.fecha + "&tipo=eq." + g.tipo, {method:"DELETE"})
+            .then(function(){ mostrarToast("ok","Versiones eliminadas"); abrirResumenVersiones(); })
+            .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
+        }, "#fff");
+        card.appendChild(acc);
+        lista.appendChild(card);
+      });
+    }).catch(function(err){
+      lista.innerHTML = '<div class="empty-list">No se pudo leer versiones: ' + escapeHtml(err.message.slice(0,120)) + '</div>';
+    });
+  }
+  $("btnHdbResumenVers").addEventListener("click", abrirResumenVersiones);
+
+  function abrirVersiones(rec, origen){
+    if(!esAdmin()) return;
+    var cfg = configSb(false); if(!cfg) return;
+    versOrigen = origen || "lista";
+    mostrarPanelVersiones();
     $("hdbVersTitulo").textContent = fechaCorta(rec.fecha) + " · " + (rec.tipo === "noche" ? "Noche" : "Día");
     var lista = $("hdbVersLista");
     lista.innerHTML = '<div class="empty-list">Cargando…</div>';
     sbFetch(cfg, "turnos_versiones?select=id,filas,turno,created_by_email,updated_at,archivado_en,accion&fecha=eq." + rec.fecha + "&tipo=eq." + rec.tipo + "&order=archivado_en.desc&limit=50").then(function(vs){
-      var items = [{ etiqueta:"ACTUAL", filas: rec.filas || [], turno: rec.turno, autor: rec.created_by_email, cuando: rec.updated_at, cuandoTxt:"guardado" }];
-      (vs || []).forEach(function(v){
-        items.push({ etiqueta: v.accion === "DELETE" ? "BORRADO" : "VERSIÓN ANTERIOR", filas: v.filas || [], turno: v.turno, autor: v.created_by_email, cuando: v.archivado_en, cuandoTxt:"reemplazado" });
+      vs = vs || [];
+      var items = [];
+      if(!rec.sinActual) items.push({ etiqueta:"ACTUAL", filas: rec.filas || [], turno: rec.turno, autor: rec.created_by_email, cuando: rec.updated_at, cuandoTxt:"guardado" });
+      vs.forEach(function(v){
+        items.push({ id: v.id, etiqueta: v.accion === "DELETE" ? "BORRADO" : "VERSIÓN ANTERIOR", filas: v.filas || [], turno: v.turno, autor: v.created_by_email, cuando: v.archivado_en, cuandoTxt:"reemplazado" });
       });
       lista.innerHTML = "";
+      if(vs.length){
+        var bulk = document.createElement("div");
+        bulk.style.cssText = "margin-bottom:10px;";
+        crearBtn(bulk, "Eliminar todas las versiones anteriores (" + vs.length + ")", "var(--red)", function(){
+          if(!confirm("¿Eliminar las " + vs.length + " versión(es) archivadas de este turno?\nEl turno actual NO se toca.")) return;
+          sbFetch(cfg, "turnos_versiones?fecha=eq." + rec.fecha + "&tipo=eq." + rec.tipo, {method:"DELETE"})
+            .then(function(){ mostrarToast("ok","Versiones eliminadas"); abrirVersiones(rec, versOrigen); })
+            .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
+        }, "#fff");
+        lista.appendChild(bulk);
+      }
+      if(!items.length){ lista.innerHTML = '<div class="empty-list">Sin versiones.</div>'; return; }
       items.forEach(function(it){
         var card = document.createElement("div");
         card.className = "item-card";
         card.style.cssText = "flex-direction:column;align-items:stretch;";
-        var cuando = it.cuando ? new Date(it.cuando).toLocaleString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "—";
         var info = document.createElement("div");
-        info.innerHTML = '<span class="item-op mono">' + it.etiqueta + '</span> <span style="font-size:.75rem;color:var(--muted-2);">' + it.filas.length + ' filas · <strong style="color:var(--amber);">' + totalFilas(it.filas) + ' u</strong> · ' + escapeHtml((it.autor || "?").split("@")[0]) + ' · ' + it.cuandoTxt + ' ' + cuando + '</span>';
+        info.innerHTML = '<span class="item-op mono">' + it.etiqueta + '</span> <span style="font-size:.75rem;color:var(--muted-2);">' + it.filas.length + ' filas · <strong style="color:var(--amber);">' + totalFilas(it.filas) + ' u</strong> · ~' + kbDe(it.filas) + ' KB · ' + escapeHtml((it.autor || "?").split("@")[0]) + ' · ' + it.cuandoTxt + ' ' + fechaHoraCorta(it.cuando) + '</span>';
         var acc = document.createElement("div");
         acc.style.cssText = "display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;";
-        function b(txt, bg, fn){
-          var x = document.createElement("button");
-          x.textContent = txt;
-          x.style.cssText = "background:"+bg+";color:#12161F;border:none;padding:5px 10px;border-radius:5px;font-size:.7rem;font-weight:600;cursor:pointer;";
-          x.addEventListener("click", fn);
-          acc.appendChild(x);
-        }
-        b("Excel","#4ADE80", function(){
+        crearBtn(acc, "Excel", "#4ADE80", function(){
           exportarXmlComoArchivo(construirXmlTurno(it.filas, "PRODUCCION " + it.etiqueta + " " + fechaCorta(rec.fecha)), "version_" + rec.fecha + "_" + rec.tipo + ".xls");
         });
-        b("Copiar a…","var(--amber)", function(){ copiarTurnoA(it.filas, it.turno, rec.fecha, rec.tipo); });
+        crearBtn(acc, "Copiar a…", "var(--amber)", function(){ copiarTurnoA(it.filas, it.turno, rec.fecha, rec.tipo, it.autor); });
+        if(it.id){
+          crearBtn(acc, "Eliminar", "var(--red)", function(){
+            if(!confirm("¿Eliminar esta versión (" + totalFilas(it.filas) + " u)? No se puede deshacer.")) return;
+            sbFetch(cfg, "turnos_versiones?id=eq." + it.id, {method:"DELETE"})
+              .then(function(){ mostrarToast("ok","Versión eliminada"); abrirVersiones(rec, versOrigen); })
+              .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
+          }, "#fff");
+        }
         card.appendChild(info); card.appendChild(acc);
         lista.appendChild(card);
       });
@@ -3879,6 +3987,7 @@
     });
   }
   $("btnHdbVersVolver").addEventListener("click", function(){
+    if(versOrigen === "resumen"){ abrirResumenVersiones(); return; }
     $("hdbVersiones").classList.add("hidden");
     $("hdbFiltros").classList.remove("hidden");
     $("hdbContainer").classList.remove("hidden");
@@ -3895,7 +4004,7 @@
   }
 
   function abrirEditorHistorial(rec, editable){
-    hdbEdit = { fecha: rec.fecha, tipo: rec.tipo, filas: JSON.parse(JSON.stringify(rec.filas || [])), editable: !!editable };
+    hdbEdit = { fecha: rec.fecha, tipo: rec.tipo, filas: JSON.parse(JSON.stringify(rec.filas || [])), editable: !!editable, creador: rec.created_by_email || "" };
     hdbDirty = false;
     hdbExpandidos = {};
     $("hdbEditorTitulo").textContent = fechaCorta(rec.fecha) + " · " + (rec.tipo === "noche" ? "Noche" : "Día") + (editable ? "" : " (solo lectura)");
@@ -4191,13 +4300,13 @@
   $("btnHdbGuardar").addEventListener("click", function(){
     if(!hdbEdit || !hdbEdit.editable) return;
     if(!exigirSesionHdb()) return;
-    if(!esAdmin()){ mostrarToast("error","Solo el admin puede modificar turnos guardados"); return; }
+    if(!esAdmin() && hdbEdit.creador !== sbSesion.email){ mostrarToast("error","Solo el autor o el admin pueden modificar este turno"); return; }
     var cfg = configSb(false); if(!cfg) return;
     var btn = $("btnHdbGuardar"); btn.disabled = true;
-    sbFetch(cfg, "turnos?on_conflict=fecha,tipo", {
-      method: "POST",
-      json: [{ fecha: hdbEdit.fecha, tipo: hdbEdit.tipo, filas: hdbEdit.filas, created_by: sbSesion.user_id, created_by_email: sbSesion.email, updated_at: new Date().toISOString() }],
-      prefer: "resolution=merge-duplicates,return=minimal"
+    sbFetch(cfg, "turnos?fecha=eq." + hdbEdit.fecha + "&tipo=eq." + hdbEdit.tipo, {
+      method: "PATCH",
+      json: { filas: hdbEdit.filas, updated_at: new Date().toISOString() },
+      prefer: "return=minimal"
     }).then(function(){
       mostrarToast("ok","Cambios guardados en el historial");
       hdbEdit = null; hdbDirty = false;

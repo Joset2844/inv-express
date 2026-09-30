@@ -3416,21 +3416,33 @@
   // sin unidades ni totales (solo para notificar la activación).
   function generarReporteActivacion(){
     var activas = ordenarPorAreaYNombre(maquinas.filter(function(m){ return m.activa; }), function(m){ return m.area; });
-    var l = ["ACTIVACION DE MAQUINAS:"];
+    var l = [];
+    l.push("🟢 *ACTIVACIÓN DE MÁQUINAS*");
+    l.push("🗓️ " + formatearFechaTurno() + (metaTurno.tipo ? " · " + etiquetaTurno() : ""));
+    l.push("━━━━━━━━━━━━━━━");
     if(activas.length === 0){ l.push("", "No hay máquinas activas."); return l.join("\n"); }
     AREAS_ORDEN.forEach(function(areaDef){
       var deArea = activas.filter(function(m){ return (m.area||"") === areaDef.key; });
       if(deArea.length === 0) return;
       l.push("");
-      l.push(areaDef.label);
+      l.push("🔹 *" + areaDef.label + "* (" + deArea.length + ")");
       deArea.forEach(function(m){
         var t = obtenerTurno(m.id);
         var match = buscarEnCatalogo(t.op);
         var desc = match ? resolverModelo(match, t.modeloIdx).descripcion : "";
-        var opTxt = t.op ? t.op : "sin OP";
-        l.push("-" + m.nombre + ": " + opTxt + (desc ? " - " + desc : ""));
+        l.push("");
+        l.push("▪️ *" + m.nombre + "*");
+        if(t.op){
+          l.push("     🔖 " + t.op + (t.pliego ? "  (" + etiquetaPliego(t.pliego) + ")" : ""));
+          if(desc) l.push("     📦 " + desc);
+        } else {
+          l.push("     ⚠️ _sin OP asignada_");
+        }
       });
     });
+    l.push("");
+    l.push("━━━━━━━━━━━━━━━");
+    l.push("✅ *" + activas.length + " máquina(s) activa(s)*");
     return l.join("\n");
   }
 

@@ -1731,8 +1731,14 @@
   }
 
   // Observación de un grupo (OP+producto): solo la de sus propios registros
+  function etiquetaPliego(p){
+    if(p === "" || p === null || typeof p === "undefined") return "";
+    if(p === "Tira" || p === "Retira") return p;
+    return "Pliego " + p;
+  }
   function textoObservacionesGrupo(t, g){
     var partes = [];
+    if(g.etq) partes.push(g.etq);
     if(t.motivoParada) partes.push("Detenida: " + t.motivoParada);
     if(g.obs.length) partes.push(g.obs.join(" / "));
     return partes.join(" | ");
@@ -1775,10 +1781,11 @@
             var descBase = descKey || (match ? resolverModelo(match, -1).descripcion : "");
             grupos[claveGrupo] = {
               op: opKey,
-              descripcion: descBase + (pliegoKey ? " - Pliego " + pliegoKey : ""),
+              descripcion: descBase + (pliegoKey ? " - " + etiquetaPliego(pliegoKey) : ""),
               sap: r.sap || (match ? (match.sap || "") : ""),
               total: 0,
               merma: 0,
+              etq: etiquetaPliego(pliegoKey),
               obs: []
             };
             ordenGrupos.push(claveGrupo);
@@ -2677,7 +2684,7 @@
       } else if(t.op){
         var match = buscarEnCatalogo(t.op);
         var descTxtEncabezado = match ? resolverModelo(match, t.modeloIdx).descripcion : "";
-        subEl.textContent = t.op + (descTxtEncabezado ? " — " + descTxtEncabezado : "") + (t.pliego ? " (Pliego " + t.pliego + ")" : "");
+        subEl.textContent = t.op + (descTxtEncabezado ? " — " + descTxtEncabezado : "") + (t.pliego ? " (" + etiquetaPliego(t.pliego) + ")" : "");
       } else {
         subEl.textContent = "Sin OP asignada";
       }
@@ -3011,7 +3018,7 @@
         var spanCant = document.createElement("span");
         spanCant.className = "mono";
         spanCant.style.color = "var(--amber)";
-        spanCant.textContent = "+" + r.cantidad + " u" + (r.pliego ? " · Pliego " + r.pliego : "") + (r.merma ? " (merma " + r.merma + ")" : "");
+        spanCant.textContent = "+" + r.cantidad + " u" + (r.pliego ? " · " + etiquetaPliego(r.pliego) : "") + (r.merma ? " (merma " + r.merma + ")" : "");
         var btnDelReg = document.createElement("button");
         btnDelReg.style.cssText = "background:none;border:none;color:var(--red);cursor:pointer;padding:0 0 0 8px;";
         btnDelReg.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>';
@@ -3094,14 +3101,21 @@
       optNinguno.value = ""; optNinguno.textContent = "Único";
       optNinguno.selected = !t.pliego;
       pliegoSelect.appendChild(optNinguno);
+      ["Tira","Retira"].forEach(function(nombre){
+        var o = document.createElement("option");
+        o.value = nombre; o.textContent = nombre;
+        if(String(t.pliego || "") === nombre) o.selected = true;
+        pliegoSelect.appendChild(o);
+      });
       for(var pn = 1; pn <= 10; pn++){
         var opt = document.createElement("option");
         opt.value = pn; opt.textContent = "Pliego " + pn;
-        if((t.pliego || "") === pn) opt.selected = true;
+        if(String(t.pliego || "") === String(pn)) opt.selected = true;
         pliegoSelect.appendChild(opt);
       }
       pliegoSelect.addEventListener("change", function(){
-        t.pliego = pliegoSelect.value ? parseInt(pliegoSelect.value, 10) : "";
+        var v = pliegoSelect.value;
+        t.pliego = !v ? "" : ((v === "Tira" || v === "Retira") ? v : parseInt(v, 10));
         guardarTurno();
         actualizarEncabezado();
       });
@@ -3332,8 +3346,8 @@
         var descBaseG = descKey || (matchG ? resolverModelo(matchG, t.modeloIdx).descripcion : "");
         grupos[claveGrupo] = {
           op: opKey,
-          descripcion: descBaseG + (pliegoKey ? " - Pliego " + pliegoKey : ""),
-          total: 0, merma: 0, obs: []
+          descripcion: descBaseG + (pliegoKey ? " - " + etiquetaPliego(pliegoKey) : ""),
+          total: 0, merma: 0, etq: etiquetaPliego(pliegoKey), obs: []
         };
         ordenGrupos.push(claveGrupo);
         if(opsConGrupo.indexOf(opKey) === -1) opsConGrupo.push(opKey);
@@ -3349,7 +3363,8 @@
       var opTxt = g.op ? g.op : "sin OP asignada";
       var descTxt = g.descripcion ? " — " + g.descripcion : "";
       var mermaTxt = g.merma > 0 ? "  (merma " + g.merma + ")" : "";
-      var obsTxt = g.obs.length ? "\n       📝 " + g.obs.join(" / ") : "";
+      var obsWsp = (g.etq ? [g.etq] : []).concat(g.obs);
+      var obsTxt = obsWsp.length ? "\n       📝 " + obsWsp.join(" / ") : "";
       return "     " + opTxt + descTxt + "  *" + g.total + " u*" + mermaTxt + obsTxt;
     });
     if(t.op && opsConGrupo.indexOf(t.op) === -1){
@@ -4077,13 +4092,19 @@
       var l = document.createElement("label"); l.textContent = "Pliego";
       var sel = document.createElement("select");
       sel.disabled = !editable;
-      var descBase = (f.producto || "").replace(/\s*-\s*Pliego\s*\d+\s*$/i, "");
-      var matchPliego = (f.producto || "").match(/-\s*Pliego\s*(\d+)\s*$/i);
-      var actual = matchPliego ? matchPliego[1] : "";
+      var descBase = (f.producto || "").replace(/\s*-\s*(Pliego\s*\d+|Tira|Retira)\s*$/i, "");
+      var matchPliego = (f.producto || "").match(/-\s*(?:Pliego\s*(\d+)|(Tira|Retira))\s*$/i);
+      var actual = matchPliego ? (matchPliego[1] || (matchPliego[2].charAt(0).toUpperCase() + matchPliego[2].slice(1).toLowerCase())) : "";
       var optU = document.createElement("option");
       optU.value = ""; optU.textContent = "Único";
       optU.selected = !actual;
       sel.appendChild(optU);
+      ["Tira","Retira"].forEach(function(nombre){
+        var o = document.createElement("option");
+        o.value = nombre; o.textContent = nombre;
+        if(actual === nombre) o.selected = true;
+        sel.appendChild(o);
+      });
       for(var pn = 1; pn <= 10; pn++){
         var opt = document.createElement("option");
         opt.value = pn; opt.textContent = "Pliego " + pn;
@@ -4091,7 +4112,10 @@
         sel.appendChild(opt);
       }
       sel.addEventListener("change", function(){
-        f.producto = descBase + (sel.value ? " - Pliego " + sel.value : "");
+        var etq = sel.value ? etiquetaPliego((sel.value === "Tira" || sel.value === "Retira") ? sel.value : parseInt(sel.value, 10)) : "";
+        f.producto = descBase + (etq ? " - " + etq : "");
+        var resto = (f.observaciones || "").replace(/^\s*(Pliego\s*\d+|Tira|Retira)\s*(\|\s*)?/i, "").trim();
+        f.observaciones = etq ? (etq + (resto ? " | " + resto : "")) : resto;
         hdbDirty = true;
         renderEditorFilas();
       });

@@ -3672,6 +3672,15 @@
     });
   }
 
+  // Borrado de versiones vía función de Supabase (admin verificado dentro de la BD). Devuelve cuántas borró.
+  function sbBorrarVersiones(cfg, params){
+    return sbFetch(cfg, "rpc/borrar_versiones", { method: "POST", json: params, prefer: "return=representation" }).then(function(n){
+      n = parseInt(n, 10) || 0;
+      if(n === 0) throw new Error("No se eliminó ninguna versión · sesión: " + (sbSesion ? sbSesion.email : "ninguna"));
+      return n;
+    });
+  }
+
   function exigirSesionHdb(){
     if(sbSesion) return true;
     mostrarToast("error","Inicia sesión en la pestaña Historial primero");
@@ -3926,8 +3935,8 @@
         if(isNaN(d) || d < 1){ mostrarToast("error","Número de días inválido"); return; }
         var corte = new Date(Date.now() - d * 86400000).toISOString();
         if(!confirm("Se borrarán TODAS las versiones archivadas antes de " + fechaHoraCorta(corte) + ".\nNo se puede deshacer.\n\n¿Confirmas?")) return;
-        sbBorrar(cfg, "turnos_versiones?archivado_en=lt." + encodeURIComponent(corte))
-          .then(function(r){ mostrarToast("ok", r.length + " versión(es) antigua(s) eliminada(s)"); abrirResumenVersiones(); })
+        sbBorrarVersiones(cfg, { p_antes: corte })
+          .then(function(r){ mostrarToast("ok", r + " versión(es) antigua(s) eliminada(s)"); abrirResumenVersiones(); })
           .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
       }, "#fff");
       head.appendChild(accH);
@@ -3948,8 +3957,8 @@
         });
         crearBtn(acc, "Borrar todas", "var(--red)", function(){
           if(!confirm("¿Borrar las " + g.n + " versión(es) archivadas de " + fechaCorta(g.fecha) + " " + g.tipo + "?\nEl turno actual NO se toca.")) return;
-          sbBorrar(cfg, "turnos_versiones?fecha=eq." + g.fecha + "&tipo=eq." + g.tipo)
-            .then(function(r){ mostrarToast("ok", r.length + " versión(es) eliminada(s)"); abrirResumenVersiones(); })
+          sbBorrarVersiones(cfg, { p_fecha: g.fecha, p_tipo: g.tipo })
+            .then(function(r){ mostrarToast("ok", r + " versión(es) eliminada(s)"); abrirResumenVersiones(); })
             .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
         }, "#fff");
         card.appendChild(acc);
@@ -3982,8 +3991,8 @@
         bulk.style.cssText = "margin-bottom:10px;";
         crearBtn(bulk, "Eliminar todas las versiones anteriores (" + vs.length + ")", "var(--red)", function(){
           if(!confirm("¿Eliminar las " + vs.length + " versión(es) archivadas de este turno?\nEl turno actual NO se toca.")) return;
-          sbBorrar(cfg, "turnos_versiones?fecha=eq." + rec.fecha + "&tipo=eq." + rec.tipo)
-            .then(function(r){ mostrarToast("ok", r.length + " versión(es) eliminada(s)"); abrirVersiones(rec, versOrigen); })
+          sbBorrarVersiones(cfg, { p_fecha: rec.fecha, p_tipo: rec.tipo })
+            .then(function(r){ mostrarToast("ok", r + " versión(es) eliminada(s)"); abrirVersiones(rec, versOrigen); })
             .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
         }, "#fff");
         lista.appendChild(bulk);
@@ -4004,7 +4013,7 @@
         if(it.id){
           crearBtn(acc, "Eliminar", "var(--red)", function(){
             if(!confirm("¿Eliminar esta versión (" + totalFilas(it.filas) + " u)? No se puede deshacer.")) return;
-            sbBorrar(cfg, "turnos_versiones?id=eq." + it.id)
+            sbBorrarVersiones(cfg, { p_id: it.id })
               .then(function(){ mostrarToast("ok","Versión eliminada"); abrirVersiones(rec, versOrigen); })
               .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
           }, "#fff");

@@ -296,7 +296,7 @@
       </button>
       <button class="btn-import" id="btnImport" style="background:var(--amber);color:#12161F;font-weight:600;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <span>Importar catálogo</span>
+        <span>Cargar OP (Excel)</span>
       </button>
     </div>
   </div>
@@ -305,7 +305,7 @@
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9AA3B2" stroke-width="2" style="margin:0 auto 6px;display:block;"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
     <p class="lead">Aún no hay catálogo cargado</p>
     <p class="sub">Importa un Excel con columnas <strong>OP</strong>, <strong>Descripción</strong>, <strong>Cliente</strong>, <strong>Cantidad</strong> y <strong>SAP</strong> para autocompletar los datos al agregar piezas.</p>
-    <button id="btnImport2">Importar Excel</button>
+    <button id="btnImport2">Cargar OP (Excel)</button>
   </div>
 
   <!-- VISTA AGREGAR -->
@@ -1073,7 +1073,7 @@
   // Combina la hoja principal (catálogo) con una hoja de modelos opcional
   // (puede venir del mismo Excel o de dos hojas de Google Sheets distintas)
   // y deja el resultado guardado en `catalogo`.
-  function combinarYGuardarCatalogo(sheetPrincipal, sheetModelos){
+  function construirCatalogo(sheetPrincipal, sheetModelos){
     var principal = parsearHojaCatalogo(sheetPrincipal);
     if(!principal){
       mostrarToast("error","Debe tener columnas OP, Descripción y Cliente");
@@ -1115,28 +1115,25 @@
       return item;
     });
 
-    catalogo = nuevo;
-    guardarCatalogo();
-    actualizarContadores();
-    renderConsulta();
-    return nuevo.length;
+    return nuevo;
   }
 
   function procesarWorkbook(wb){
     var sheetPrincipal = wb.Sheets[wb.SheetNames[0]];
     var sheetModelos = wb.SheetNames.length > 1 ? wb.Sheets[wb.SheetNames[1]] : null;
-    return combinarYGuardarCatalogo(sheetPrincipal, sheetModelos);
+    return construirCatalogo(sheetPrincipal, sheetModelos);
   }
 
   function handleFile(file){
     if(!file) return;
+    if(!sbSesion){ mostrarToast("error","Inicia sesión (pestaña Historial) para cargar el catálogo para todos"); return; }
     var reader = new FileReader();
     reader.onload = function(evt){
       try{
         var data = new Uint8Array(evt.target.result);
         var wb = XLSX.read(data, {type:"array"});
-        var n = procesarWorkbook(wb);
-        if(n !== false) mostrarToast("ok","Catálogo cargado: " + n + " OP importadas");
+        var nuevo = procesarWorkbook(wb);
+        if(nuevo) subirCatalogoASupabase(nuevo);
       }catch(err){
         mostrarToast("error","No se pudo leer el archivo");
       }
@@ -1151,93 +1148,119 @@
   $("btnImport").addEventListener("click", function(){ $("fileInput").click(); });
   $("btnImport2").addEventListener("click", function(){ $("fileInput").click(); });
 
-  // ---------- actualizar catálogo desde Google Sheets ----------
-  var STORAGE_URL_SHEETS = "inventario_url_sheets_catalogo";
-  var STORAGE_URL_SHEETS_MODELOS = "inventario_url_sheets_modelos";
+  // ---------- catálogo compartido en Supabase ----------
+  // Tabla catalogo_op (una fila por OP). Cada equipo guarda una copia local y solo descarga
+  // lo nuevo/modificado desde su última sincronización (ahorra datos del plan gratuito).
+  var STORAGE_CAT_CURSOR = "inventario_cat_cursor";
 
-  // Links por defecto: cualquier persona que use la app puede presionar
-  // directamente "Actualizar catálogo" sin configurar nada primero.
-  // Doble toque sobre el botón permite cambiarlos por otros si hace falta.
-  var DEFAULT_URL_SHEETS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVxCxG3XBMgSSedTqw7xWb7s7qxbYB3ZavS8MP9bx2lrwkzlK8oNQRSoFLw_sjjY68b1V0vNUaCb7B/pub?gid=0&single=true&output=csv";
-  var DEFAULT_URL_SHEETS_MODELOS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTVxCxG3XBMgSSedTqw7xWb7s7qxbYB3ZavS8MP9bx2lrwkzlK8oNQRSoFLw_sjjY68b1V0vNUaCb7B/pub?gid=667317961&single=true&output=csv";
+  function canon(o){
+    if(Array.isArray(o)) return "[" + o.map(canon).join(",") + "]";
+    if(o && typeof o === "object"){
+      return "{" + Object.keys(o).sort().filter(function(k){ return o[k] !== undefined; }).map(function(k){
+        return JSON.stringify(k) + ":" + canon(o[k]);
+      }).join(",") + "}";
+    }
+    return JSON.stringify(o);
+  }
 
-  function pedirUrlSheets(){
-    var actualPrincipal = "";
-    var actualModelos = "";
-    try{
-      actualPrincipal = localStorage.getItem(STORAGE_URL_SHEETS) || DEFAULT_URL_SHEETS;
-      actualModelos = localStorage.getItem(STORAGE_URL_SHEETS_MODELOS) || DEFAULT_URL_SHEETS_MODELOS;
-    }catch(e){}
+  function leerCursorCatalogo(){
+    try{ return localStorage.getItem(STORAGE_CAT_CURSOR) || ""; }catch(e){ return ""; }
+  }
 
-    var nuevaPrincipal = prompt("Link de la hoja PRINCIPAL (catálogo, publicada como CSV):", actualPrincipal);
-    if(nuevaPrincipal === null) return null;
-    nuevaPrincipal = nuevaPrincipal.trim();
-    if(!nuevaPrincipal){ mostrarToast("error","La hoja principal es obligatoria"); return null; }
+  var sincronizandoCatalogo = null;
+  function sincronizarCatalogoSupabase(){
+    if(sincronizandoCatalogo) return sincronizandoCatalogo;
+    var cfg = configSb(false);
+    if(!cfg) return Promise.resolve(0);
+    var cursor = leerCursorCatalogo();
+    if(!catalogo.length) cursor = "";
+    var filtro = "";
+    if(cursor){
+      // margen de 10 min por si dos cargas se cruzaron; reaplicar filas es inofensivo
+      var desde = new Date(new Date(cursor).getTime() - 10 * 60000).toISOString();
+      filtro = "&actualizado_en=gt." + encodeURIComponent(desde);
+    }
+    var PAG = 1000, pagina = 0, recibidas = [], maxTs = cursor;
+    function pedir(){
+      return sbFetch(cfg, "catalogo_op?select=datos,actualizado_en&order=actualizado_en.asc,op.asc&limit=" + PAG + "&offset=" + (pagina * PAG) + filtro).then(function(rows){
+        rows = rows || [];
+        rows.forEach(function(r){
+          if(r.datos && r.datos.op) recibidas.push(r.datos);
+          if(r.actualizado_en && r.actualizado_en > maxTs) maxTs = r.actualizado_en;
+        });
+        if(rows.length === PAG){ pagina++; return pedir(); }
+      });
+    }
+    sincronizandoCatalogo = pedir().then(function(){
+      if(!recibidas.length) return 0;
+      if(!cursor){
+        // primera sincronización: la nube manda
+        catalogo = recibidas;
+      } else {
+        var indice = {};
+        catalogo.forEach(function(c, k){ indice[c.op] = k; });
+        recibidas.forEach(function(it){
+          if(indice[it.op] !== undefined) catalogo[indice[it.op]] = it;
+          else { indice[it.op] = catalogo.length; catalogo.push(it); }
+        });
+      }
+      try{ localStorage.setItem(STORAGE_CAT_CURSOR, maxTs); }catch(e){}
+      guardarCatalogo();
+      actualizarContadores();
+      renderConsulta();
+      return recibidas.length;
+    }).finally(function(){ sincronizandoCatalogo = null; });
+    return sincronizandoCatalogo;
+  }
 
-    var nuevaModelos = prompt("Link de la hoja de MODELOS (opcional, deja vacío si no aplica):", actualModelos);
-    if(nuevaModelos === null) nuevaModelos = actualModelos;
-    nuevaModelos = nuevaModelos.trim();
-
-    try{
-      localStorage.setItem(STORAGE_URL_SHEETS, nuevaPrincipal);
-      if(nuevaModelos) localStorage.setItem(STORAGE_URL_SHEETS_MODELOS, nuevaModelos);
-      else localStorage.removeItem(STORAGE_URL_SHEETS_MODELOS);
-    }catch(e){}
-
-    return nuevaPrincipal;
+  function subirCatalogoASupabase(nuevo){
+    if(!exigirSesionHdb()) return;
+    var cfg = configSb(false); if(!cfg) return;
+    var btn = $("btnImport");
+    btn.disabled = true;
+    sincronizarCatalogoSupabase().then(function(){
+      // Se compara contra la nube (si nunca se ha sincronizado, la nube está vacía)
+      var base = leerCursorCatalogo() ? catalogo : [];
+      var conocidas = {};
+      base.forEach(function(c){ conocidas[c.op] = canon(c); });
+      var cambios = [], nuevas = 0, modificadas = 0, iguales = 0;
+      nuevo.forEach(function(it){
+        var previo = conocidas[it.op];
+        if(previo === undefined){ nuevas++; cambios.push({ op: it.op, datos: it }); }
+        else if(previo !== canon(it)){ modificadas++; cambios.push({ op: it.op, datos: it }); }
+        else iguales++;
+      });
+      if(!cambios.length){ mostrarToast("ok","Sin cambios: las " + iguales + " OP ya están en el catálogo"); return; }
+      if(!confirm("Catálogo del Excel: " + nuevo.length + " OP\n\n• Nuevas: " + nuevas + "\n• Modificadas: " + modificadas + "\n• Sin cambios: " + iguales + "\n\nSe subirán " + cambios.length + " OP para todos (no se borra ninguna).\n¿Confirmas?")) return;
+      var LOTE = 500, k = 0;
+      function subirLote(){
+        if(k >= cambios.length) return Promise.resolve();
+        var lote = cambios.slice(k, k + LOTE); k += LOTE;
+        return sbFetch(cfg, "catalogo_op?on_conflict=op", { method: "POST", json: lote, prefer: "resolution=merge-duplicates,return=minimal" }).then(subirLote);
+      }
+      return subirLote().then(function(){
+        return sincronizarCatalogoSupabase();
+      }).then(function(){
+        mostrarToast("ok", "Catálogo actualizado para todos: " + nuevas + " nuevas, " + modificadas + " modificadas");
+      });
+    }).catch(function(err){
+      mostrarToast("error","No se pudo cargar el catálogo: " + err.message.slice(0,90));
+    }).finally(function(){ btn.disabled = false; });
   }
 
   $("btnActualizarPC").addEventListener("click", function(){
-    var urlPrincipal = "", urlModelos = "";
-    try{
-      urlPrincipal = localStorage.getItem(STORAGE_URL_SHEETS) || DEFAULT_URL_SHEETS;
-      urlModelos = localStorage.getItem(STORAGE_URL_SHEETS_MODELOS) || DEFAULT_URL_SHEETS_MODELOS;
-    }catch(e){
-      urlPrincipal = DEFAULT_URL_SHEETS;
-      urlModelos = DEFAULT_URL_SHEETS_MODELOS;
-    }
-
     var btn = $("btnActualizarPC");
     var textoOriginal = btn.querySelector("span").textContent;
     btn.disabled = true;
     btn.querySelector("span").textContent = "Actualizando...";
-
-    var fetchPrincipal = fetch(urlPrincipal, { cache: "no-store" }).then(function(resp){
-      if(!resp.ok) throw new Error("HTTP " + resp.status + " (hoja principal)");
-      return resp.text();
+    sincronizarCatalogoSupabase().then(function(n){
+      mostrarToast("ok", n ? "Catálogo actualizado: " + n + " OP nuevas/modificadas" : "Catálogo al día");
+    }).catch(function(){
+      mostrarToast("error","No se pudo actualizar el catálogo. Revisa tu conexión.");
+    }).finally(function(){
+      btn.disabled = false;
+      btn.querySelector("span").textContent = textoOriginal;
     });
-    var fetchModelos = urlModelos
-      ? fetch(urlModelos, { cache: "no-store" }).then(function(resp){
-          if(!resp.ok) throw new Error("HTTP " + resp.status + " (hoja de modelos)");
-          return resp.text();
-        })
-      : Promise.resolve(null);
-
-    Promise.all([fetchPrincipal, fetchModelos])
-      .then(function(resultados){
-        var csvPrincipal = resultados[0];
-        var csvModelos = resultados[1];
-        var wbPrincipal = XLSX.read(csvPrincipal, {type:"string"});
-        var sheetPrincipal = wbPrincipal.Sheets[wbPrincipal.SheetNames[0]];
-        var sheetModelos = null;
-        if(csvModelos){
-          var wbModelos = XLSX.read(csvModelos, {type:"string"});
-          sheetModelos = wbModelos.Sheets[wbModelos.SheetNames[0]];
-        }
-        var n = combinarYGuardarCatalogo(sheetPrincipal, sheetModelos);
-        if(n !== false) mostrarToast("ok","Catálogo actualizado: " + n + " OP" + (sheetModelos ? " (con modelos)" : ""));
-      })
-      .catch(function(err){
-        mostrarToast("error","No se pudo descargar el catálogo. Revisa los links.");
-      })
-      .finally(function(){
-        btn.disabled = false;
-        btn.querySelector("span").textContent = textoOriginal;
-      });
-  });
-
-  $("btnActualizarPC").addEventListener("dblclick", function(){
-    pedirUrlSheets();
   });
 
   // ---------- autocompletar OP ----------
@@ -3681,6 +3704,29 @@
     });
   }
 
+  // Borrado masivo: obtiene los ids y los borra de uno en uno (en tandas de 10), que es la vía que sí responde.
+  function idsVersiones(cfg, filtro){
+    return sbFetch(cfg, "turnos_versiones?select=id&" + filtro + "&limit=1000").then(function(rows){
+      return (rows || []).map(function(r){ return r.id; });
+    });
+  }
+  function sbBorrarVersionesIds(cfg, ids){
+    if(!ids.length) return Promise.reject(new Error("No hay versiones que cumplan el criterio"));
+    var borrados = 0, fallos = 0, i = 0;
+    function tanda(){
+      if(i >= ids.length) return Promise.resolve();
+      var lote = ids.slice(i, i + 10); i += 10;
+      return Promise.all(lote.map(function(id){
+        return sbBorrarVersiones(cfg, { p_id: id }).then(function(){ borrados++; }).catch(function(){ fallos++; });
+      })).then(tanda);
+    }
+    return tanda().then(function(){
+      if(borrados === 0) throw new Error("No se pudo eliminar ninguna versión");
+      if(fallos) mostrarToast("error", fallos + " versión(es) no se pudieron borrar");
+      return borrados;
+    });
+  }
+
   function exigirSesionHdb(){
     if(sbSesion) return true;
     mostrarToast("error","Inicia sesión en la pestaña Historial primero");
@@ -3935,7 +3981,7 @@
         if(isNaN(d) || d < 1){ mostrarToast("error","Número de días inválido"); return; }
         var corte = new Date(Date.now() - d * 86400000).toISOString();
         if(!confirm("Se borrarán TODAS las versiones archivadas antes de " + fechaHoraCorta(corte) + ".\nNo se puede deshacer.\n\n¿Confirmas?")) return;
-        sbBorrarVersiones(cfg, { p_antes: corte })
+        idsVersiones(cfg, "archivado_en=lt." + encodeURIComponent(corte)).then(function(ids){ return sbBorrarVersionesIds(cfg, ids); })
           .then(function(r){ mostrarToast("ok", r + " versión(es) antigua(s) eliminada(s)"); abrirResumenVersiones(); })
           .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
       }, "#fff");
@@ -3957,7 +4003,7 @@
         });
         crearBtn(acc, "Borrar todas", "var(--red)", function(){
           if(!confirm("¿Borrar las " + g.n + " versión(es) archivadas de " + fechaCorta(g.fecha) + " " + g.tipo + "?\nEl turno actual NO se toca.")) return;
-          sbBorrarVersiones(cfg, { p_fecha: g.fecha, p_tipo: g.tipo })
+          idsVersiones(cfg, "fecha=eq." + g.fecha + "&tipo=eq." + g.tipo).then(function(ids){ return sbBorrarVersionesIds(cfg, ids); })
             .then(function(r){ mostrarToast("ok", r + " versión(es) eliminada(s)"); abrirResumenVersiones(); })
             .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
         }, "#fff");
@@ -3991,7 +4037,7 @@
         bulk.style.cssText = "margin-bottom:10px;";
         crearBtn(bulk, "Eliminar todas las versiones anteriores (" + vs.length + ")", "var(--red)", function(){
           if(!confirm("¿Eliminar las " + vs.length + " versión(es) archivadas de este turno?\nEl turno actual NO se toca.")) return;
-          sbBorrarVersiones(cfg, { p_fecha: rec.fecha, p_tipo: rec.tipo })
+          idsVersiones(cfg, "fecha=eq." + rec.fecha + "&tipo=eq." + rec.tipo).then(function(ids){ return sbBorrarVersionesIds(cfg, ids); })
             .then(function(r){ mostrarToast("ok", r + " versión(es) eliminada(s)"); abrirVersiones(rec, versOrigen); })
             .catch(function(err){ mostrarToast("error","No se pudo borrar: " + err.message.slice(0,80)); });
         }, "#fff");
@@ -4393,7 +4439,9 @@
   if(maquinas.length === 0 && navigator.onLine){ setTimeout(function(){ $("btnActualizarMaquinas").click(); }, 300); }
 
   // Al abrir la app, refresca el catálogo desde Sheets (evita catálogos viejos en localStorage)
-  if(navigator.onLine){ setTimeout(function(){ $("btnActualizarPC").click(); }, 600); }
+  if(navigator.onLine){ setTimeout(function(){
+    sincronizarCatalogoSupabase().then(function(n){ if(n) mostrarToast("ok", n + " OP actualizada(s) en el catálogo"); }).catch(function(){});
+  }, 600); }
 
   if("serviceWorker" in navigator){
     var yaRecargo = false;

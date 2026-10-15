@@ -1176,11 +1176,10 @@
     if(!catalogo.length) cursor = "";
     var filtro = "";
     if(cursor){
-      // margen de 10 min por si dos cargas se cruzaron; reaplicar filas es inofensivo
-      var desde = new Date(new Date(cursor).getTime() - 10 * 60000).toISOString();
-      filtro = "&actualizado_en=gt." + encodeURIComponent(desde);
+      // Se usa el sello exacto del servidor (con microsegundos): así no se vuelven a bajar filas ya recibidas.
+      filtro = "&actualizado_en=gt." + encodeURIComponent(cursor);
     }
-    var PAG = 1000, pagina = 0, recibidas = [], maxTs = cursor;
+    var PAG = 1000, pagina = 0, recibidas = [], maxTs = cursor, cambiadas = 0;
     function pedir(){
       return sbFetch(cfg, "catalogo_op?select=datos,actualizado_en&order=actualizado_en.asc,op.asc&limit=" + PAG + "&offset=" + (pagina * PAG) + filtro).then(function(rows){
         rows = rows || [];
@@ -1200,15 +1199,16 @@
         var indice = {};
         catalogo.forEach(function(c, k){ indice[c.op] = k; });
         recibidas.forEach(function(it){
-          if(indice[it.op] !== undefined) catalogo[indice[it.op]] = it;
-          else { indice[it.op] = catalogo.length; catalogo.push(it); }
+          if(indice[it.op] !== undefined){
+            // solo cuenta como actualizada si realmente cambió respecto a la copia local
+            if(canon(catalogo[indice[it.op]]) !== canon(it)){ catalogo[indice[it.op]] = it; cambiadas++; }
+          } else { indice[it.op] = catalogo.length; catalogo.push(it); cambiadas++; }
         });
       }
       try{ localStorage.setItem(STORAGE_CAT_CURSOR, maxTs); }catch(e){}
-      guardarCatalogo();
-      actualizarContadores();
-      renderConsulta();
-      return recibidas.length;
+      if(!cursor) cambiadas = recibidas.length;
+      if(cambiadas){ guardarCatalogo(); actualizarContadores(); renderConsulta(); }
+      return cambiadas;
     }).finally(function(){ sincronizandoCatalogo = null; });
     return sincronizandoCatalogo;
   }

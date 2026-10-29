@@ -42,7 +42,7 @@
     color:var(--text);
     font-family:'IBM Plex Sans', sans-serif;
     -webkit-tap-highlight-color: transparent;
-    padding-bottom:78px;
+    padding-bottom:130px;
   }
   .mono{font-family:'IBM Plex Mono', monospace;}
   .label-font{font-family:'Oswald', sans-serif; text-transform:uppercase; letter-spacing:.03em;}
@@ -636,8 +636,14 @@
       Resumen de producción
     </h2>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-    <button class="btn-clear" id="btnActivacionExcel" style="color:var(--amber-text);font-weight:600;">Activación Excel</button>
-    <button class="btn-clear" id="btnActivacionPdf" style="color:var(--amber-text);font-weight:600;">Activación PDF</button>
+    <button class="btn-import" id="btnActivacionExcel" style="background:var(--amber);color:#12161F;font-weight:600;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Activación Excel</span>
+    </button>
+    <button class="btn-import" id="btnActivacionPdf" style="background:var(--panel-alt);color:var(--text);border:1px solid var(--border-input);font-weight:600;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>
+      <span>Activación PDF</span>
+    </button>
     <button class="btn-clear" id="btnExportarResumenExcel" style="color:var(--muted-2);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Exportar Excel
@@ -705,12 +711,16 @@
       Exportar Excel
     </button>
   </div>
-  <div class="bottombar-inner hidden" id="bottombarProduccion">
-    <button id="btnCopiarReporteProd" style="background:none;border:1px solid var(--border-input);color:#E7EAF0;padding:9px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;">Copiar texto</button>
-    <button id="btnEnviarActivacion" style="background:none;border:1px solid #93C5FD;color:#93C5FD;padding:9px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;">Enviar activación</button>
-    <button class="btn-export" id="btnReportarWhatsappProd" style="background:#25D366;color:#0B2E13;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2z"/></svg>
-      Reportar WhatsApp
+  <div class="bottombar-inner hidden" id="bottombarProduccion" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+    <button id="btnCopiarReporteProd" style="width:100%;background:none;border:1px solid var(--border-input);color:#E7EAF0;padding:10px 8px;border-radius:6px;font-size:.78rem;cursor:pointer;">Copiar texto</button>
+    <button id="btnEnviarActivacion" style="width:100%;background:none;border:1px solid #93C5FD;color:#93C5FD;padding:10px 8px;border-radius:6px;font-size:.78rem;cursor:pointer;">Enviar activación</button>
+    <button id="btnActivacionExcelProd" style="display:flex;align-items:center;justify-content:center;gap:6px;background:var(--amber);color:#12161F;border:none;padding:10px 8px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Activación Excel
+    </button>
+    <button id="btnActivacionPdfProd" style="display:flex;align-items:center;justify-content:center;gap:6px;background:var(--panel-alt);color:var(--text);border:1px solid var(--border-input);padding:10px 8px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>
+      Activación PDF
     </button>
   </div>
 </div>
@@ -2256,7 +2266,7 @@
     exportarLibroComoArchivo(construirLibroActivacionPlano(filas, titulo), nombreBase + ".xlsx");
   }
 
-  function imprimirActivacion(filas, fechaTxt, turnoTxt){
+  function imprimirActivacion(filas, fechaTxt, turnoTxt, nombreArchivo){
     function bloque(areaDef){
       var de = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
       if(de.length === 0) return "";
@@ -2267,7 +2277,7 @@
           }).join("") + "</tbody></table>";
     }
     var paradas = filas.filter(function(f){ return f.parada; }).length;
-    var html = "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><title>Activación de máquinas " + fechaTxt + "</title><style>"
+    var html = "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><title>" + nombreArchivo + "</title><style>"
       + "@page{size:A4 landscape;margin:10mm;}body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}"
       + "h1{font-size:16px;margin:0 0 2px;}h2{font-size:13px;background:#d97706;color:#fff;padding:4px 6px;margin:12px 0 4px;}"
       + "table{width:100%;border-collapse:collapse;margin-bottom:4px;}th,td{border:1px solid #999;padding:3px 5px;text-align:left;vertical-align:middle;}"
@@ -2282,6 +2292,9 @@
     w.onload = function(){ w.focus(); w.print(); };
   }
 
+  function nombreActivacion(){
+    return "activacion_" + (metaTurno.fecha || "sin-fecha") + "_" + (metaTurno.tipo || "sin-turno");
+  }
   function datosActivacion(){
     var filas = filasActivacion();
     if(filas.length === 0){ mostrarToast("error","No hay máquinas activas"); return null; }
@@ -2290,11 +2303,11 @@
   $("btnActivacionExcel").addEventListener("click", function(){
     var d = datosActivacion(); if(!d) return;
     exportarActivacionExcel(d.filas, "ACTIVACION DE MAQUINAS " + d.fecha + (d.turno ? " - " + d.turno.toUpperCase() : ""),
-      "activacion_" + (metaTurno.fecha || "") + (metaTurno.tipo ? "_" + metaTurno.tipo : ""));
+      nombreActivacion());
   });
   $("btnActivacionPdf").addEventListener("click", function(){
     var d = datosActivacion(); if(!d) return;
-    imprimirActivacion(d.filas, d.fecha, d.turno);
+    imprimirActivacion(d.filas, d.fecha, d.turno, nombreActivacion());
   });
 
   function renderResumen(){
@@ -3669,18 +3682,8 @@
     mostrarToast(ok ? "ok" : "error", ok ? "Reporte copiado" : "No se pudo copiar automático");
   });
 
-  $("btnReportarWhatsappProd").addEventListener("click", function(){
-    if(maquinas.length === 0){ mostrarToast("error","No hay máquinas registradas"); return; }
-    var texto = generarReporteProduccion();
-    var url = "https://wa.me/?text=" + encodeURIComponent(texto);
-    var a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  });
+  $("btnActivacionExcelProd").addEventListener("click", function(){ $("btnActivacionExcel").click(); });
+  $("btnActivacionPdfProd").addEventListener("click", function(){ $("btnActivacionPdf").click(); });
 
 
   // ---------- historial en Supabase ----------

@@ -424,7 +424,7 @@
   <div id="viewConsultar" class="hidden">
     <div class="search-box">
       <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      <input type="text" id="buscarInput" placeholder="Buscar por OP, descripción o cliente…" />
+      <input type="text" id="buscarInput" placeholder="Buscar por OP, descripción, cliente o SAP…" />
       <button class="clear-icon hidden" id="btnClearBusqueda">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
@@ -1532,8 +1532,9 @@
     var resultados = !q ? catalogo : catalogo.filter(function(c){
       if(c.op.toLowerCase().indexOf(q) !== -1 ||
          c.descripcion.toLowerCase().indexOf(q) !== -1 ||
-         c.cliente.toLowerCase().indexOf(q) !== -1) return true;
-      if(c.modelos && c.modelos.length > 1){
+         c.cliente.toLowerCase().indexOf(q) !== -1 ||
+         String(c.sap || "").toLowerCase().indexOf(q) !== -1) return true;
+      if(c.modelos && c.modelos.length > 0){
         return c.modelos.some(function(mo){
           return (mo.descripcion||"").toLowerCase().indexOf(q) !== -1 ||
                  (mo.sap||"").toLowerCase().indexOf(q) !== -1;

@@ -635,10 +635,14 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6h-2"/><path d="M13 3v6h6M9 13h6M9 17h6M9 9h1"/></svg>
       Resumen de producción
     </h2>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <button class="btn-clear" id="btnActivacionExcel" style="color:var(--amber-text);font-weight:600;">Activación Excel</button>
+    <button class="btn-clear" id="btnActivacionPdf" style="color:var(--amber-text);font-weight:600;">Activación PDF</button>
     <button class="btn-clear" id="btnExportarResumenExcel" style="color:var(--muted-2);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Exportar Excel
     </button>
+    </div>
   </div>
   <div id="emptyResumen" class="empty-list hidden">No hay máquinas activas con producción.</div>
   <div id="resumenContainer"></div>
@@ -1755,6 +1759,7 @@
   }
 
   // Observación de un grupo (OP+producto): solo la de sus propios registros
+  var MOTIVOS_PARADA = ["Mantenimiento","Falta de personal","Desglose","Calibración"];
   function etiquetaPliego(p){
     if(p === "" || p === null || typeof p === "undefined") return "";
     if(p === "Tira" || p === "Retira") return p;
@@ -2142,6 +2147,155 @@
     }
     exportarLibroComoArchivo(construirLibroResumen(filas, titulo), nombreBase + ".xlsx");
   }
+
+  // ---------- Activación de máquinas: Excel / PDF (máquinas paradas en amarillo) ----------
+  var ACT_HEADERS = ["MAQUINA","CODIGO","ESTADO","MOTIVO DE PARADA","OP","PRODUCTO","PERSONAL EN MAQUINA","OBSERVACIONES"];
+
+  function filasActivacion(){
+    return ordenarPorAreaYNombre(maquinas.filter(function(m){ return m.activa; }), function(m){ return m.area; }).map(function(m){
+      var t = obtenerTurno(m.id);
+      var match = buscarEnCatalogo(t.op);
+      var desc = match ? resolverModelo(match, t.modeloIdx).descripcion : "";
+      var etq = etiquetaPliego(t.pliego);
+      return {
+        maquina: m.nombre, codigo: m.codigo || "", area: m.area || "",
+        parada: !!t.motivoParada, motivo: t.motivoParada || "",
+        op: t.op || "", producto: [desc, etq].filter(Boolean).join(" - "),
+        personal: t.personal || "", observaciones: t.observaciones || ""
+      };
+    });
+  }
+
+  function construirLibroActivacionColor(filas, titulo){
+    var wb = new ExcelJS.Workbook();
+    var ws = wb.addWorksheet("Activacion");
+    ws.columns = [{width:18},{width:13},{width:12},{width:20},{width:14},{width:40},{width:28},{width:30}];
+    ws.mergeCells(1,1,1,8);
+    var rt = ws.getRow(1); rt.height = 22;
+    rt.getCell(1).value = titulo;
+    rt.getCell(1).font = { bold:true, size:14, color:{argb:"FFFFFFFF"} };
+    rt.getCell(1).fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FF12161F"} };
+    rt.getCell(1).alignment = { horizontal:"center", vertical:"middle" };
+    var fila = 2, total = 0, paradas = 0;
+    AREAS_ORDEN.forEach(function(areaDef){
+      var de = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
+      if(de.length === 0) return;
+      ws.mergeCells(fila,1,fila,8);
+      var a = ws.getRow(fila).getCell(1);
+      a.value = areaDef.label;
+      a.font = { bold:true, color:{argb:"FFFFFFFF"} };
+      a.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFD97706"} };
+      a.alignment = { horizontal:"left", vertical:"middle" };
+      fila++;
+      var rh = ws.getRow(fila);
+      ACT_HEADERS.forEach(function(h, i){
+        var c = rh.getCell(i+1);
+        c.value = h;
+        c.font = { bold:true, color:{argb:"FF333333"} };
+        c.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFF2F2F2"} };
+        c.alignment = { horizontal:"center", vertical:"middle", wrapText:true };
+        c.border = EXCELJS_BORDES;
+      });
+      fila++;
+      de.forEach(function(f){
+        total++; if(f.parada) paradas++;
+        var r = ws.getRow(fila);
+        [f.maquina, f.codigo, f.parada ? "PARADA" : "ACTIVA", f.motivo, f.op || "—", f.producto, f.personal, f.observaciones].forEach(function(v, i){
+          var c = r.getCell(i+1);
+          c.value = v;
+          c.border = EXCELJS_BORDES;
+          c.alignment = { vertical:"middle", wrapText:true };
+          if(i === 0 || i === 2) c.font = { bold:true };
+          if(f.parada) c.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFFFF176"} };
+        });
+        fila++;
+      });
+    });
+    ws.mergeCells(fila,1,fila,8);
+    var rTot = ws.getRow(fila).getCell(1);
+    rTot.value = "TOTAL: " + total + " máquina(s) · " + paradas + " parada(s)";
+    rTot.font = { bold:true };
+    rTot.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFFDEBD0"} };
+    rTot.border = EXCELJS_BORDES;
+    ws.views = [{ state:"frozen", ySplit:1 }];
+    return wb;
+  }
+
+  // Respaldo sin color (si ExcelJS no cargó, p. ej. sin internet)
+  function construirLibroActivacionPlano(filas, titulo){
+    var aoa = [[titulo], []];
+    AREAS_ORDEN.forEach(function(areaDef){
+      var de = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
+      if(de.length === 0) return;
+      aoa.push([areaDef.label]);
+      aoa.push(ACT_HEADERS);
+      de.forEach(function(f){
+        aoa.push([f.maquina, f.codigo, f.parada ? "PARADA" : "ACTIVA", f.motivo, f.op || "—", f.producto, f.personal, f.observaciones]);
+      });
+      aoa.push([]);
+    });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{wch:18},{wch:13},{wch:12},{wch:20},{wch:14},{wch:40},{wch:28},{wch:30}];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Activacion");
+    return wb;
+  }
+
+  function exportarActivacionExcel(filas, titulo, nombreBase){
+    if(exceljsDisponible()){
+      try{
+        construirLibroActivacionColor(filas, titulo).xlsx.writeBuffer().then(function(buffer){
+          descargarBlobExcel(new Blob([buffer], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}), nombreBase + ".xlsx");
+        }).catch(function(){
+          exportarLibroComoArchivo(construirLibroActivacionPlano(filas, titulo), nombreBase + ".xlsx");
+          mostrarToast("ok","Excel exportado (sin color: no se pudo generar con formato)");
+        });
+        return;
+      }catch(e){}
+    }
+    exportarLibroComoArchivo(construirLibroActivacionPlano(filas, titulo), nombreBase + ".xlsx");
+  }
+
+  function imprimirActivacion(filas, fechaTxt, turnoTxt){
+    function bloque(areaDef){
+      var de = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
+      if(de.length === 0) return "";
+      return "<h2>" + areaDef.label + "</h2><table><thead><tr>" + ACT_HEADERS.map(function(h){ return "<th>" + h + "</th>"; }).join("") + "</tr></thead><tbody>"
+        + de.map(function(f){
+            return "<tr class='" + (f.parada ? "parada" : "") + "'><td><b>" + escapeHtml(f.maquina) + "</b></td><td>" + escapeHtml(f.codigo) + "</td><td><b>" + (f.parada ? "PARADA" : "ACTIVA") + "</b></td><td>"
+              + escapeHtml(f.motivo) + "</td><td>" + escapeHtml(f.op || "—") + "</td><td>" + escapeHtml(f.producto) + "</td><td>" + escapeHtml(f.personal) + "</td><td>" + escapeHtml(f.observaciones) + "</td></tr>";
+          }).join("") + "</tbody></table>";
+    }
+    var paradas = filas.filter(function(f){ return f.parada; }).length;
+    var html = "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><title>Activación de máquinas " + fechaTxt + "</title><style>"
+      + "@page{size:A4 landscape;margin:10mm;}body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}"
+      + "h1{font-size:16px;margin:0 0 2px;}h2{font-size:13px;background:#d97706;color:#fff;padding:4px 6px;margin:12px 0 4px;}"
+      + "table{width:100%;border-collapse:collapse;margin-bottom:4px;}th,td{border:1px solid #999;padding:3px 5px;text-align:left;vertical-align:middle;}"
+      + "th{background:#f2f2f2;text-align:center;}tr.parada td{background:#fff176;}"
+      + ".top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #333;padding-bottom:6px;margin-bottom:4px;}"
+      + "</style></head><body><div class='top'><div><h1>Activación de máquinas</h1><div>" + fechaTxt + (turnoTxt ? " · " + turnoTxt : "") + "</div></div>"
+      + "<div><b>" + filas.length + "</b> máquina(s) · <b>" + paradas + "</b> parada(s)</div></div>"
+      + AREAS_ORDEN.map(bloque).join("") + "</body></html>";
+    var w = window.open("", "_blank");
+    if(!w){ mostrarToast("error","El navegador bloqueó la ventana de impresión"); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+    w.onload = function(){ w.focus(); w.print(); };
+  }
+
+  function datosActivacion(){
+    var filas = filasActivacion();
+    if(filas.length === 0){ mostrarToast("error","No hay máquinas activas"); return null; }
+    return { filas: filas, fecha: formatearFechaTurno(), turno: metaTurno.tipo ? etiquetaTurno() : "" };
+  }
+  $("btnActivacionExcel").addEventListener("click", function(){
+    var d = datosActivacion(); if(!d) return;
+    exportarActivacionExcel(d.filas, "ACTIVACION DE MAQUINAS " + d.fecha + (d.turno ? " - " + d.turno.toUpperCase() : ""),
+      "activacion_" + (metaTurno.fecha || "") + (metaTurno.tipo ? "_" + metaTurno.tipo : ""));
+  });
+  $("btnActivacionPdf").addEventListener("click", function(){
+    var d = datosActivacion(); if(!d) return;
+    imprimirActivacion(d.filas, d.fecha, d.turno);
+  });
 
   function renderResumen(){
     resumenContainer.innerHTML = "";
@@ -2732,17 +2886,53 @@
     detalle.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid var(--border);";
     card.appendChild(detalle);
 
-    var motivoInput = document.createElement("input");
-    motivoInput.type = "text";
-    motivoInput.placeholder = "Motivo si está detenida (opcional)";
-    motivoInput.value = t.motivoParada || "";
-    motivoInput.style.cssText = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;margin-bottom:8px;background:var(--panel-alt);color:var(--text);";
-    motivoInput.addEventListener("input", function(){
-      t.motivoParada = motivoInput.value.trim();
+    var estiloCampo = "width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border-input);font-size:.82rem;outline:none;margin-bottom:8px;background:var(--panel-alt);color:var(--text);";
+
+    var personalInput = document.createElement("input");
+    personalInput.type = "text";
+    personalInput.placeholder = "Personal en máquina (nombres)";
+    personalInput.value = t.personal || "";
+    personalInput.style.cssText = estiloCampo;
+    personalInput.addEventListener("input", function(){
+      t.personal = personalInput.value.trim();
+      guardarTurno();
+    });
+    detalle.appendChild(personalInput);
+
+    // Motivo de parada: opciones fijas u "Otros" con texto libre (se guarda como "Otros: texto")
+    var motivoActual = t.motivoParada || "";
+    var selInicial = "", otroInicial = "";
+    if(motivoActual){
+      if(MOTIVOS_PARADA.indexOf(motivoActual) !== -1) selInicial = motivoActual;
+      else { selInicial = "__otros"; otroInicial = motivoActual.replace(/^Otros:?\s*/i, ""); }
+    }
+    var motivoSelect = document.createElement("select");
+    motivoSelect.style.cssText = estiloCampo;
+    [["", "Operativa (sin parada)"]].concat(MOTIVOS_PARADA.map(function(m){ return [m, "Parada: " + m]; })).concat([["__otros", "Parada: Otros…"]]).forEach(function(o){
+      var opt = document.createElement("option");
+      opt.value = o[0]; opt.textContent = o[1];
+      if(o[0] === selInicial) opt.selected = true;
+      motivoSelect.appendChild(opt);
+    });
+    var otroInput = document.createElement("input");
+    otroInput.type = "text";
+    otroInput.placeholder = "Especifica el motivo";
+    otroInput.value = otroInicial;
+    otroInput.style.cssText = estiloCampo;
+    otroInput.classList.toggle("hidden", selInicial !== "__otros");
+    function aplicarMotivo(){
+      var v = motivoSelect.value;
+      if(!v) t.motivoParada = "";
+      else if(v === "__otros"){ var x = otroInput.value.trim(); t.motivoParada = x ? "Otros: " + x : "Otros"; }
+      else t.motivoParada = v;
+      otroInput.classList.toggle("hidden", v !== "__otros");
       guardarTurno();
       actualizarEncabezado();
-    });
-    detalle.appendChild(motivoInput);
+    }
+    motivoSelect.addEventListener("change", aplicarMotivo);
+    otroInput.addEventListener("input", aplicarMotivo);
+    detalle.appendChild(motivoSelect);
+    detalle.appendChild(otroInput);
 
     var observacionesInput = document.createElement("input");
     observacionesInput.type = "text";
@@ -4054,7 +4244,7 @@
         var acc = document.createElement("div");
         acc.style.cssText = "display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;";
         crearBtn(acc, "Excel", "#4ADE80", function(){
-          exportarXmlComoArchivo(construirXmlTurno(it.filas, "PRODUCCION " + it.etiqueta + " " + fechaCorta(rec.fecha)), "version_" + rec.fecha + "_" + rec.tipo + ".xls");
+          exportarTurnoConRespaldo(it.filas, "PRODUCCION " + it.etiqueta + " " + fechaCorta(rec.fecha), "version_" + rec.fecha + "_" + rec.tipo);
         });
         crearBtn(acc, "Copiar a…", "var(--amber)", function(){ copiarTurnoA(it.filas, it.turno, rec.fecha, rec.tipo, it.autor); });
         if(it.id){

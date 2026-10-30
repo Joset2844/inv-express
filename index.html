@@ -1790,7 +1790,7 @@
   function filasTurnoParaExcel(){
     var filas = [];
     ordenarPorNombre(maquinas.filter(function(m){ return m.activa; })).forEach(function(m){
-      var t = obtenerTurno(m.id);
+      turnosDeMaquina(m).forEach(function(t){
       if(!t.registros || t.registros.length === 0){
         var opsVacias = opsDeTurno(t, m);
         if(!opsVacias.length) opsVacias = [{ op: "", modeloIdx: -1 }];
@@ -1877,6 +1877,7 @@
           });
         });
       }
+      });
     });
     return filas;
   }
@@ -1946,20 +1947,6 @@
     return wb;
   }
 
-  function construirLibroResumen(filas, titulo){
-    var aoa = [[titulo], [], ["MAQUINA","OP'S","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"]];
-    var sumaTotal = 0, sumaMerma = 0;
-    filas.forEach(function(f){
-      aoa.push([f.maquina, f.op, f.producto, f.total||0, f.merma||0, f.observaciones || ""]);
-      sumaTotal += (f.total||0); sumaMerma += (f.merma||0);
-    });
-    aoa.push(["", "", "TOTAL", sumaTotal, sumaMerma, ""]);
-    var ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws["!cols"] = [{wch:18},{wch:14},{wch:42},{wch:17},{wch:10},{wch:32}];
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Resumen");
-    return wb;
-  }
 
   // ---------- PRUEBA: Excel con color/negrita/bordes real, vía ExcelJS ----------
   // Se carga desde una librería externa (ver <head>). Si por cualquier motivo
@@ -2074,58 +2061,6 @@
     return wb;
   }
 
-  function construirLibroResumenColor(filas, titulo){
-    var wb = new ExcelJS.Workbook();
-    var ws = wb.addWorksheet("Resumen");
-    ws.columns = [{width:18},{width:14},{width:42},{width:17},{width:10},{width:32}];
-
-    ws.mergeCells(1,1,1,6);
-    ws.getRow(1).getCell(1).value = titulo;
-    ws.getRow(1).getCell(1).font = { bold:true, size:14, color:{argb:"FFFFFFFF"} };
-    ws.getRow(1).getCell(1).fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FF12161F"} };
-    ws.getRow(1).getCell(1).alignment = { horizontal:"center", vertical:"middle" };
-
-    var headers = ["MAQUINA","OP'S","PRODUCTO","TOTAL PRODUCCION","MERMA","OBSERVACIONES"];
-    var rHead = ws.getRow(2);
-    headers.forEach(function(h, i){
-      var c = rHead.getCell(i+1);
-      c.value = h;
-      c.font = { bold:true, color:{argb:"FF333333"} };
-      c.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFF2F2F2"} };
-      c.alignment = { horizontal:"center", vertical:"middle", wrapText:true };
-      c.border = EXCELJS_BORDES;
-    });
-
-    var fila = 3, sumaTotal = 0, sumaMerma = 0;
-    filas.forEach(function(f){
-      sumaTotal += (f.total||0); sumaMerma += (f.merma||0);
-      var r = ws.getRow(fila);
-      var vals = [f.maquina, f.op, f.producto, f.total||0, f.merma||0, f.observaciones||""];
-      vals.forEach(function(v, i){
-        var c = r.getCell(i+1);
-        c.value = v;
-        c.border = EXCELJS_BORDES;
-        c.alignment = { vertical:"middle", wrapText:true };
-        if(i === 3) c.alignment = { horizontal:"right", vertical:"middle" };
-        if(i === 4){ c.alignment = { horizontal:"right", vertical:"middle" }; c.font = { color:{argb:"FFC0392B"} }; }
-      });
-      fila++;
-    });
-
-    var rTot = ws.getRow(fila);
-    rTot.getCell(3).value = "TOTAL";
-    for(var i=1; i<=6; i++){
-      rTot.getCell(i).font = { bold:true };
-      rTot.getCell(i).fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFFDEBD0"} };
-      rTot.getCell(i).border = EXCELJS_BORDES;
-    }
-    rTot.getCell(4).value = sumaTotal; rTot.getCell(4).alignment = { horizontal:"right" };
-    rTot.getCell(5).value = sumaMerma; rTot.getCell(5).alignment = { horizontal:"right" };
-    rTot.getCell(5).font = { bold:true, color:{argb:"FFC0392B"} };
-
-    ws.views = [{ state:"frozen", ySplit:2 }];
-    return wb;
-  }
 
   // Intenta exportar con color (ExcelJS); si falla por cualquier motivo,
   // exporta la versión plana y funcional de siempre (SheetJS), sin cortar el flujo.
@@ -2146,43 +2081,34 @@
     exportarLibroComoArchivo(construirLibroTurno(filas, titulo), nombreBase + ".xlsx");
   }
 
-  function exportarResumenConRespaldo(filas, titulo, nombreBase){
-    if(exceljsDisponible()){
-      try{
-        var wbColor = construirLibroResumenColor(filas, titulo);
-        wbColor.xlsx.writeBuffer().then(function(buffer){
-          var blob = new Blob([buffer], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-          descargarBlobExcel(blob, nombreBase + ".xlsx");
-        }).catch(function(){
-          exportarLibroComoArchivo(construirLibroResumen(filas, titulo), nombreBase + ".xlsx");
-          mostrarToast("ok","Excel exportado (sin color: no se pudo generar con formato)");
-        });
-        return;
-      }catch(e){}
-    }
-    exportarLibroComoArchivo(construirLibroResumen(filas, titulo), nombreBase + ".xlsx");
-  }
 
   // ---------- Activación de máquinas: Excel / PDF (máquinas paradas en amarillo) ----------
   var ACT_HEADERS = ["MAQUINA","CODIGO","ESTADO","MOTIVO DE PARADA","OP","PRODUCTO","PERSONAL EN MAQUINA","OBSERVACIONES"];
 
   function filasActivacion(){
-    return ordenarPorAreaYNombre(maquinas.filter(function(m){ return m.activa; }), function(m){ return m.area; }).map(function(m){
-      var t = obtenerTurno(m.id);
-      var lista = opsDeTurno(t, m).map(function(o){
+    var filas = [];
+    ordenarPorAreaYNombre(maquinas.filter(function(m){ return m.activa; }), function(m){ return m.area; }).forEach(function(m){
+      turnosDeMaquina(m).forEach(function(t){
+        var o = opsDeTurno(t, m)[0] || { op: "", modeloIdx: -1, pliego: "" };
         var mt = buscarEnCatalogo(o.op);
         var d = mt ? resolverModelo(mt, o.modeloIdx).descripcion : "";
-        return { op: o.op, producto: [d, etiquetaPliego(o.pliego)].filter(Boolean).join(" - ") };
+        filas.push({
+          maqId: m.id, uid: m.id + "#" + (t.instancia || 1), maquina: m.nombre, codigo: m.codigo || "", area: m.area || "",
+          parada: !!t.motivoParada, motivo: t.motivoParada || "",
+          op: o.op, producto: [d, etiquetaPliego(o.pliego)].filter(Boolean).join(" - "),
+          personal: t.personal || "",
+          observaciones: t.observaciones || ""
+        });
       });
-      return {
-        maquina: m.nombre, codigo: m.codigo || "", area: m.area || "",
-        parada: !!t.motivoParada, motivo: t.motivoParada || "",
-        ops: lista,
-        op: lista.map(function(x){ return x.op; }).join("\n"),
-        producto: lista.map(function(x){ return x.producto; }).join("\n"),
-        personal: t.personal || "", observaciones: t.observaciones || ""
-      };
     });
+    return filas;
+  }
+
+  // Cuenta máquinas reales (una máquina Multi-OP ocupa varias filas)
+  function contarMaquinasAct(filas){
+    var ids = {}, pa = {};
+    filas.forEach(function(f){ ids[f.uid] = true; if(f.parada) pa[f.uid] = true; });
+    return { total: Object.keys(ids).length, paradas: Object.keys(pa).length };
   }
 
   function construirLibroActivacionColor(filas, titulo){
@@ -2195,7 +2121,7 @@
     rt.getCell(1).font = { bold:true, size:14, color:{argb:"FFFFFFFF"} };
     rt.getCell(1).fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FF12161F"} };
     rt.getCell(1).alignment = { horizontal:"center", vertical:"middle" };
-    var fila = 2, total = 0, paradas = 0;
+    var fila = 2;
     AREAS_ORDEN.forEach(function(areaDef){
       var de = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
       if(de.length === 0) return;
@@ -2216,8 +2142,13 @@
         c.border = EXCELJS_BORDES;
       });
       fila++;
+      var previo = null, inicioRun = fila;
+      function cerrarRun(desde, hasta){
+        if(hasta > desde){ [1,2].forEach(function(col){ ws.mergeCells(desde, col, hasta, col); }); }
+      }
       de.forEach(function(f){
-        total++; if(f.parada) paradas++;
+        if(previo !== null && f.maqId !== previo){ cerrarRun(inicioRun, fila - 1); inicioRun = fila; }
+        previo = f.maqId;
         var r = ws.getRow(fila);
         [f.maquina, f.codigo, f.parada ? "PARADA" : "ACTIVA", f.motivo, f.op || "—", f.producto, f.personal, f.observaciones].forEach(function(v, i){
           var c = r.getCell(i+1);
@@ -2229,10 +2160,12 @@
         });
         fila++;
       });
+      cerrarRun(inicioRun, fila - 1);
     });
+    var cnt = contarMaquinasAct(filas);
     ws.mergeCells(fila,1,fila,8);
     var rTot = ws.getRow(fila).getCell(1);
-    rTot.value = "TOTAL: " + total + " máquina(s) · " + paradas + " parada(s)";
+    rTot.value = "TOTAL: " + cnt.total + " máquina(s) · " + cnt.paradas + " parada(s)";
     rTot.font = { bold:true };
     rTot.fill = { type:"pattern", pattern:"solid", fgColor:{argb:"FFFDEBD0"} };
     rTot.border = EXCELJS_BORDES;
@@ -2279,13 +2212,27 @@
     function bloque(areaDef){
       var de = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
       if(de.length === 0) return "";
-      return "<h2>" + areaDef.label + "</h2><table><thead><tr>" + ACT_HEADERS.map(function(h){ return "<th>" + h + "</th>"; }).join("") + "</tr></thead><tbody>"
-        + de.map(function(f){
-            return "<tr class='" + (f.parada ? "parada" : "") + "'><td><b>" + escapeHtml(f.maquina) + "</b></td><td>" + escapeHtml(f.codigo) + "</td><td><b>" + (f.parada ? "PARADA" : "ACTIVA") + "</b></td><td>"
-              + escapeHtml(f.motivo) + "</td><td>" + escapeHtml(f.op || "—").replace(/\n/g,"<br>") + "</td><td>" + escapeHtml(f.producto).replace(/\n/g,"<br>") + "</td><td>" + escapeHtml(f.personal) + "</td><td>" + escapeHtml(f.observaciones) + "</td></tr>";
-          }).join("") + "</tbody></table>";
+      var h = "<h2>" + areaDef.label + "</h2><table><thead><tr>" + ACT_HEADERS.map(function(x){ return "<th>" + x + "</th>"; }).join("") + "</tr></thead><tbody>";
+      var i = 0;
+      while(i < de.length){
+        var j = i;
+        while(j + 1 < de.length && de[j+1].maqId === de[i].maqId) j++;
+        var n = j - i + 1, f0 = de[i];
+        var rs = n > 1 ? " rowspan='" + n + "'" : "";
+        for(var k = i; k <= j; k++){
+          var f = de[k];
+          h += "<tr class='" + (f.parada ? "parada" : "") + "'>";
+          if(k === i) h += "<td" + rs + "><b>" + escapeHtml(f0.maquina) + "</b></td><td" + rs + ">" + escapeHtml(f0.codigo) + "</td>";
+          h += "<td><b>" + (f.parada ? "PARADA" : "ACTIVA") + "</b></td><td>" + escapeHtml(f.motivo) + "</td>";
+          h += "<td>" + escapeHtml(f.op || "—") + "</td><td>" + escapeHtml(f.producto) + "</td><td>" + escapeHtml(f.personal) + "</td><td>" + escapeHtml(f.observaciones) + "</td>";
+          h += "</tr>";
+        }
+        i = j + 1;
+      }
+      return h + "</tbody></table>";
     }
-    var paradas = filas.filter(function(f){ return f.parada; }).length;
+    var cntAct = contarMaquinasAct(filas);
+    var paradas = cntAct.paradas;
     var html = "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><title>" + nombreArchivo + "</title><style>"
       + "@page{size:A4 landscape;margin:10mm;}body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}"
       + "h1{font-size:16px;margin:0 0 2px;}h2{font-size:13px;background:#d97706;color:#fff;padding:4px 6px;margin:12px 0 4px;}"
@@ -2293,7 +2240,7 @@
       + "th{background:#f2f2f2;text-align:center;}tr.parada td{background:#fff176;}"
       + ".top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid #333;padding-bottom:6px;margin-bottom:4px;}"
       + "</style></head><body><div class='top'><div><h1>Activación de máquinas</h1><div>" + fechaTxt + (turnoTxt ? " · " + turnoTxt : "") + "</div></div>"
-      + "<div><b>" + filas.length + "</b> máquina(s) · <b>" + paradas + "</b> parada(s)</div></div>"
+      + "<div><b>" + cntAct.total + "</b> máquina(s) · <b>" + paradas + "</b> parada(s)</div></div>"
       + AREAS_ORDEN.map(bloque).join("") + "</body></html>";
     var w = window.open("", "_blank");
     if(!w){ mostrarToast("error","El navegador bloqueó la ventana de impresión"); return; }
@@ -2369,25 +2316,18 @@
     return metaTurno.tipo === "noche" ? "Turno Noche" : "Turno Día";
   }
 
-  $("btnExportarTurnoExcel").addEventListener("click", function(){
+  // Un solo formato de Excel de turno (el mismo del Historial: celdas combinadas por máquina)
+  function exportarExcelTurnoActual(){
     var filas = filasTurnoParaExcel();
     if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para exportar"); return; }
     var fechaTxt = formatearFechaTurno();
-    var titulo = "PRODUCCION " + etiquetaTurno().toUpperCase() + " " + fechaTxt;
-    var nombreBase = "turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-");
+    var titulo = "PRODUCCION " + (metaTurno.tipo ? "TURNO " + (metaTurno.tipo === "noche" ? "NOCHE" : "DIA") + " " : "") + fechaTxt;
+    var nombreBase = "turno_" + (metaTurno.fecha || "sin-fecha") + "_" + (metaTurno.tipo || "sin-turno");
     try{ exportarTurnoConRespaldo(filas, titulo, nombreBase); }
     catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
-  });
-
-  $("btnExportarResumenExcel").addEventListener("click", function(){
-    var filas = filasTurnoParaExcel();
-    if(filas.length === 0){ mostrarToast("error","No hay máquinas activas para exportar"); return; }
-    var fechaTxt = new Date().toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit",year:"numeric"});
-    var titulo = "PRODUCCION TURNO DIA " + fechaTxt;
-    var nombreBase = "resumen_turno_" + new Date().toISOString().slice(0,16).replace(/[:T]/g,"-");
-    try{ exportarResumenConRespaldo(filas, titulo, nombreBase); }
-    catch(err){ mostrarToast("error","No se pudo exportar el Excel"); }
-  });
+  }
+  $("btnExportarTurnoExcel").addEventListener("click", exportarExcelTurnoActual);
+  $("btnExportarResumenExcel").addEventListener("click", exportarExcelTurnoActual);
 
   // ---------- máquinas ----------
   var nombreMaquinaInput = $("nombreMaquinaInput"), maquinasContainer = $("maquinasContainer"),
@@ -2700,20 +2640,16 @@
         + ";color:" + (activo ? "#12161F" : "var(--muted)") + ";" + (bloqueada ? "opacity:.6;" : "");
     })();
     multiBtn.addEventListener("click", function(){
-      var t = obtenerTurno(item.id);
       if(!item.multiOp){
-        if(!confirm("¿Activar MULTI-OP en «" + item.nombre + "»?\n\nEsta máquina podrá tener VARIAS OP al mismo tiempo en Producción, cada una con su propia cantidad.\n\nÚsalo solo si realmente trabaja varias OP a la vez; si no, genera confusión en los reportes.")) return;
+        if(!confirm("¿Activar MULTI-OP en «" + item.nombre + "»?\n\nEn Producción podrás agregar tarjetas nuevas (" + item.nombre + "(1), " + item.nombre + "(2)…), cada una con su propia OP, personal, parada y observaciones.\n\nEn los reportes y el Excel todas salen bajo «" + item.nombre + "».\n\nÚsalo solo si esta máquina realmente trabaja varias OP a la vez.")) return;
         item.multiOp = true;
-        t.ops = t.op ? [{ op: t.op, modeloIdx: (typeof t.modeloIdx === "number" ? t.modeloIdx : -1), pliego: t.pliego || "", cantTxt: "", mermaTxt: "" }] : [];
       } else {
-        var n = (t.ops || []).length;
-        if(!confirm("¿Desactivar MULTI-OP en «" + item.nombre + "»?" + (n > 1 ? "\n\nEn este turno tiene " + n + " OP asignadas: solo se conservará la primera (" + t.ops[0].op + "). Los registros ya guardados no se borran." : ""))) return;
+        var n = turno.filter(function(x){ return x.maquinaId === item.id; }).length;
+        if(n > 1){ mostrarToast("error","Primero quita las tarjetas adicionales en Producción (hay " + n + ")"); return; }
+        if(!confirm("¿Desactivar MULTI-OP en «" + item.nombre + "»?\n\nVolverá a tener una sola OP a la vez.")) return;
         item.multiOp = false;
-        if(t.ops && t.ops.length){ t.op = t.ops[0].op; t.modeloIdx = (typeof t.ops[0].modeloIdx === "number" ? t.ops[0].modeloIdx : -1); t.pliego = t.ops[0].pliego || ""; }
-        t.ops = [];
       }
       guardarMaquinas();
-      guardarTurno();
       renderMaquinas();
       mostrarToast("ok", item.multiOp ? "Multi-OP activado" : "Multi-OP desactivado");
     });
@@ -2850,15 +2786,27 @@
   var produccionContainer = $("produccionContainer"), emptyProd = $("emptyProd"),
       odometerProd = $("odometerProd");
 
-  function obtenerTurno(maquinaId){
-    var t = turno.find(function(x){ return x.maquinaId === maquinaId; });
+  // Cada máquina tiene una tarjeta de turno (instancia 1). Las máquinas Multi-OP pueden tener más:
+  // PM(1), PM(2)... cada una con su propia OP, personal, parada y observaciones.
+  function obtenerTurno(maquinaId, inst){
+    inst = inst || 1;
+    var t = turno.find(function(x){ return x.maquinaId === maquinaId && (x.instancia || 1) === inst; });
     if(!t){
-      t = { maquinaId: maquinaId, op: "", objetivo: null, motivoParada: "", observaciones: "", modeloIdx: -1, pliego: "", registros: [] };
+      t = { maquinaId: maquinaId, instancia: inst, op: "", objetivo: null, motivoParada: "", observaciones: "", modeloIdx: -1, pliego: "", registros: [] };
       turno.push(t);
     }
     if(typeof t.pliego === "undefined") t.pliego = "";
+    if(typeof t.instancia === "undefined") t.instancia = 1;
     return t;
   }
+  function turnosDeMaquina(m){
+    if(!m.multiOp) return [obtenerTurno(m.id, 1)];
+    var lista = turno.filter(function(x){ return x.maquinaId === m.id; });
+    if(!lista.length) lista = [obtenerTurno(m.id, 1)];
+    return lista.slice().sort(function(a, b){ return (a.instancia || 1) - (b.instancia || 1); });
+  }
+  function claveTarjeta(m, inst){ return m.multiOp ? m.id + "#" + inst : m.id; }
+  function nombreTarjeta(m, inst){ return m.multiOp ? m.nombre + "(" + inst + ")" : m.nombre; }
 
   function totalProducido(t){
     return t.registros.reduce(function(acc,r){ return acc + r.cantidad; }, 0);
@@ -2869,283 +2817,29 @@
 
   var expandidos = {};
 
-  // OP asignadas a una máquina en el turno: varias si es Multi-OP, una si no.
+  // OP de una tarjeta de turno (cada tarjeta, incluso las Multi-OP, tiene una sola OP vigente)
   function opsDeTurno(t, m){
-    if(m && m.multiOp && Array.isArray(t.ops) && t.ops.length){
-      return t.ops.map(function(l){ return { op: l.op, modeloIdx: (typeof l.modeloIdx === "number" ? l.modeloIdx : -1), pliego: l.pliego || "" }; });
-    }
-    return t.op ? [{ op: t.op, modeloIdx: (typeof t.modeloIdx === "number" ? t.modeloIdx : -1), pliego: t.pliego || "" }] : [];
+    return t.op ? [{ op: t.op, modeloIdx: (typeof t.modeloIdx === "number" ? t.modeloIdx : -1), pliego: t.pliego || "", personal: t.personal || "" }] : [];
   }
 
+
   // Campo de OP con sugerencias del catálogo; al elegir (o Enter) llama alElegir(op) y se limpia.
-  function crearCampoOpCatalogo(placeholder, alElegir){
-    var wrap = document.createElement("div");
-    wrap.style.cssText = "position:relative;flex:1;";
-    var inp = document.createElement("input");
-    inp.type = "text"; inp.className = "mono"; inp.placeholder = placeholder;
-    inp.inputMode = "numeric"; inp.setAttribute("pattern", "[0-9]*");
-    inp.style.cssText = "width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;background:var(--panel-alt);color:var(--text);";
-    var sug = document.createElement("div");
-    sug.className = "suggest-box hidden";
-    wrap.appendChild(inp); wrap.appendChild(sug);
-    function elegir(op){
-      sug.classList.add("hidden"); sug.innerHTML = "";
-      inp.value = "";
-      alElegir(op);
-    }
-    function pintarSug(){
-      var q = inp.value.trim().toLowerCase();
-      if(!q){ sug.classList.add("hidden"); sug.innerHTML = ""; return; }
-      var matches = catalogo.filter(function(c){ return c.op.toLowerCase().indexOf(q) !== -1; }).slice(0,6);
-      if(!matches.length){ sug.classList.add("hidden"); sug.innerHTML = ""; return; }
-      sug.innerHTML = "";
-      matches.forEach(function(m){
-        var b = document.createElement("button");
-        b.className = "suggest-item";
-        b.innerHTML = '<div class="suggest-op mono">'+escapeHtml(m.op)+'</div><div class="suggest-meta">'+escapeHtml(descripcionCorta(m))+' · '+escapeHtml(m.cliente)+'</div>';
-        b.addEventListener("touchstart", function(ev){ ev.preventDefault(); elegir(m.op); }, {passive:false});
-        b.addEventListener("mousedown", function(ev){ ev.preventDefault(); elegir(m.op); });
-        sug.appendChild(b);
-      });
-      sug.classList.remove("hidden");
-    }
-    inp.addEventListener("input", function(){
-      inp.value = inp.value.replace(/\D/g, "");
-      pintarSug();
-    });
-    inp.addEventListener("focus", pintarSug);
-    inp.addEventListener("blur", function(){ setTimeout(function(){ sug.classList.add("hidden"); }, 150); });
-    inp.addEventListener("keydown", function(e){
-      if(e.key === "Enter"){ e.preventDefault(); if(inp.value.trim()) elegir(inp.value.trim()); }
-    });
-    wrap.campo = inp;
-    return wrap;
-  }
 
   // Detalle de una máquina Multi-OP: varias OP a la vez; "Registrar todas" guarda un registro por OP
   // (igual que si se hubiera agregado cada una por separado).
-  function construirDetalleMultiOp(maquina, t, detalle, actualizarEncabezado, limpiarObservacion){
-    if(!Array.isArray(t.ops)) t.ops = [];
-    var cont = document.createElement("div");
-    detalle.appendChild(cont);
-    var esPP = maquina.tipoProducto === "pp";
-    var estiloIn = "padding:8px 10px;border-radius:6px;border:1px solid var(--border-input);font-size:.85rem;outline:none;background:var(--panel-alt);color:var(--text);";
 
-    function sincronizar(){
-      var p = t.ops[0];
-      t.op = p ? p.op : "";
-      t.modeloIdx = p ? (typeof p.modeloIdx === "number" ? p.modeloIdx : -1) : -1;
-      guardarTurno();
-      actualizarEncabezado();
-    }
-
-    function agregarOp(op){
-      op = op.trim();
-      if(!op) return;
-      var existe = t.ops.some(function(l){ return l.op.toLowerCase() === op.toLowerCase(); });
-      if(existe){ mostrarToast("error","Esa OP ya está asignada a esta máquina"); return; }
-      var match = buscarEnCatalogo(op);
-      t.ops.push({ op: match ? match.op : op, modeloIdx: -1, pliego: "", cantTxt: "", mermaTxt: "" });
-      sincronizar();
-      pintar();
-    }
-
-    function registrarLote(){
-      var pendientes = t.ops.filter(function(l){ var c = parseInt(l.cantTxt,10); return !isNaN(c) && c > 0; });
-      if(!pendientes.length){ mostrarToast("error","Ingresa la cantidad de al menos una OP"); return; }
-      var primero = true, ahoraIso = new Date().toISOString();
-      pendientes.forEach(function(l){
-        var cantidad = parseInt(l.cantTxt,10);
-        var merma = parseInt(l.mermaTxt,10);
-        if(isNaN(merma) || merma < 0) merma = 0;
-        var match = buscarEnCatalogo(l.op);
-        var mo = resolverModelo(match, (typeof l.modeloIdx === "number" ? l.modeloIdx : -1));
-        t.registros.unshift({
-          id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
-          op: l.op,
-          descripcion: mo.descripcion,
-          sap: mo.sap || "",
-          pliego: l.pliego || "",
-          cantidad: cantidad,
-          merma: merma,
-          observacion: primero ? (t.observaciones || "") : "",
-          fecha: ahoraIso
-        });
-        primero = false;
-        l.cantTxt = ""; l.mermaTxt = "";
-      });
-      t.observaciones = "";
-      limpiarObservacion();
-      guardarTurno();
-      actualizarEncabezado();
-      pintar();
-      mostrarToast("ok", pendientes.length + " OP registrada(s)");
-    }
-
-    function crearLinea(l, idx){
-      var box = document.createElement("div");
-      box.style.cssText = "border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:var(--panel-alt);";
-
-      var top = document.createElement("div");
-      top.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;";
-      var nombre = document.createElement("span");
-      nombre.className = "mono";
-      nombre.style.cssText = "font-weight:600;font-size:.85rem;color:var(--amber-text);";
-      nombre.textContent = l.op;
-      var quitar = document.createElement("button");
-      quitar.type = "button";
-      quitar.textContent = "✕ Quitar";
-      quitar.style.cssText = "background:none;border:none;color:var(--red);font-size:.72rem;font-weight:600;cursor:pointer;white-space:nowrap;";
-      quitar.addEventListener("click", function(){
-        if(!confirm("¿Quitar la OP " + l.op + " de esta máquina?\n\nLos registros ya guardados no se borran.")) return;
-        t.ops.splice(idx, 1);
-        sincronizar();
-        pintar();
-      });
-      top.appendChild(nombre); top.appendChild(quitar);
-      box.appendChild(top);
-
-      var match = buscarEnCatalogo(l.op);
-      var mo = resolverModelo(match, (typeof l.modeloIdx === "number" ? l.modeloIdx : -1));
-      var ref = document.createElement("div");
-      ref.style.cssText = "font-size:.74rem;color:var(--muted-2);margin:4px 0 8px;";
-      ref.textContent = match ? (mo.descripcion + " · " + match.cliente + (mo.sap ? " · SAP " + mo.sap : "")) : "Sin coincidencia en el catálogo";
-      box.appendChild(ref);
-
-      if(match && match.modelos && match.modelos.length > 1){
-        var chips = document.createElement("div");
-        chips.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;";
-        function chip(label, mi){
-          var c = document.createElement("button");
-          c.type = "button";
-          c.textContent = label;
-          var activo = (typeof l.modeloIdx === "number" ? l.modeloIdx : -1) === mi;
-          c.style.cssText = "padding:5px 10px;border-radius:14px;border:1px solid " + (activo ? "var(--amber)" : "var(--border-input)")
-            + ";font-size:.68rem;font-weight:600;cursor:pointer;background:" + (activo ? "var(--amber)" : "var(--panel)") + ";color:" + (activo ? "#12161F" : "var(--muted)") + ";";
-          c.addEventListener("click", function(){ l.modeloIdx = mi; sincronizar(); pintar(); });
-          return c;
-        }
-        chips.appendChild(chip("Total (todos)", -1));
-        match.modelos.forEach(function(m, mi){ chips.appendChild(chip(m.descripcion || ("Modelo " + (mi+1)), mi)); });
-        box.appendChild(chips);
-      }
-
-      var fila = document.createElement("div");
-      fila.style.cssText = "display:flex;gap:8px;";
-      if(esPP){
-        var sel = document.createElement("select");
-        sel.title = "Pliego";
-        sel.style.cssText = estiloIn + "flex:0 0 84px;padding:8px 4px;font-weight:600;text-align:center;";
-        [["","Único"],["Tira","Tira"],["Retira","Retira"]].concat([1,2,3,4,5,6,7,8,9,10].map(function(n){ return [String(n), "Pliego " + n]; })).forEach(function(o){
-          var op = document.createElement("option");
-          op.value = o[0]; op.textContent = o[1];
-          if(String(l.pliego || "") === o[0]) op.selected = true;
-          sel.appendChild(op);
-        });
-        sel.addEventListener("change", function(){
-          var v = sel.value;
-          l.pliego = !v ? "" : ((v === "Tira" || v === "Retira") ? v : parseInt(v, 10));
-          guardarTurno();
-        });
-        fila.appendChild(sel);
-      }
-      var cant = document.createElement("input");
-      cant.type = "number"; cant.min = "0"; cant.className = "mono"; cant.placeholder = "Cant. producida";
-      cant.value = l.cantTxt || "";
-      cant.style.cssText = estiloIn + "flex:1;min-width:0;";
-      cant.addEventListener("input", function(){ l.cantTxt = cant.value; guardarTurno(); });
-      var merma = document.createElement("input");
-      merma.type = "number"; merma.min = "0"; merma.className = "mono"; merma.placeholder = "Merma";
-      merma.value = l.mermaTxt || "";
-      merma.style.cssText = estiloIn + "width:80px;";
-      merma.addEventListener("input", function(){ l.mermaTxt = merma.value; guardarTurno(); });
-      fila.appendChild(cant); fila.appendChild(merma);
-      box.appendChild(fila);
-      return box;
-    }
-
-    function pintar(){
-      cont.innerHTML = "";
-      var aviso = document.createElement("div");
-      aviso.style.cssText = "font-size:.72rem;font-weight:600;color:var(--amber-text);margin:0 0 8px;";
-      aviso.textContent = "MULTI-OP: esta máquina trabaja varias OP a la vez (" + t.ops.length + " asignada" + (t.ops.length === 1 ? "" : "s") + ")";
-      cont.appendChild(aviso);
-
-      t.ops.forEach(function(l, idx){ cont.appendChild(crearLinea(l, idx)); });
-
-      var filaAdd = document.createElement("div");
-      filaAdd.style.cssText = "display:flex;gap:8px;margin-bottom:10px;";
-      var campo = crearCampoOpCatalogo("Agregar otra OP…", agregarOp);
-      var btnAdd = document.createElement("button");
-      btnAdd.type = "button";
-      btnAdd.textContent = "+ OP";
-      btnAdd.style.cssText = "background:var(--panel-alt);color:var(--text);border:1px solid var(--border-input);padding:0 14px;border-radius:6px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap;";
-      btnAdd.addEventListener("click", function(){ var v = campo.campo.value; if(v.trim()){ campo.campo.value = ""; agregarOp(v); } });
-      filaAdd.appendChild(campo); filaAdd.appendChild(btnAdd);
-      cont.appendChild(filaAdd);
-
-      var btnLote = document.createElement("button");
-      btnLote.type = "button";
-      btnLote.textContent = "Registrar todas las OP";
-      btnLote.disabled = t.ops.length === 0;
-      btnLote.style.cssText = "width:100%;background:var(--amber);color:#12161F;border:none;padding:10px;border-radius:6px;font-size:.85rem;font-weight:700;cursor:pointer;margin-bottom:10px;" + (t.ops.length === 0 ? "opacity:.5;" : "");
-      btnLote.addEventListener("click", registrarLote);
-      cont.appendChild(btnLote);
-
-      var mermaTot = totalMerma(t);
-      if(mermaTot > 0){
-        var mr = document.createElement("div");
-        mr.style.cssText = "font-size:.72rem;color:var(--red);margin-bottom:6px;";
-        mr.textContent = "Merma acumulada: " + mermaTot + " u";
-        cont.appendChild(mr);
-      }
-
-      t.registros.slice(0,6).forEach(function(r){
-        var f = new Date(r.fecha);
-        var fTxt = f.toLocaleDateString("es-PE",{day:"2-digit",month:"2-digit"}) + " " + f.toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"});
-        var row = document.createElement("div");
-        row.className = "registro-row";
-        var izq = document.createElement("span");
-        izq.textContent = fTxt + (r.op ? " (" + r.op + ")" : "");
-        var der = document.createElement("span");
-        der.style.cssText = "display:flex;align-items:center;";
-        var c = document.createElement("span");
-        c.className = "mono";
-        c.style.color = "var(--amber)";
-        c.textContent = "+" + r.cantidad + " u" + (r.pliego ? " · " + etiquetaPliego(r.pliego) : "") + (r.merma ? " (merma " + r.merma + ")" : "");
-        var del = document.createElement("button");
-        del.style.cssText = "background:none;border:none;color:var(--red);cursor:pointer;padding:0 0 0 8px;";
-        del.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>';
-        del.addEventListener("click", function(){
-          t.registros = t.registros.filter(function(x){ return x.id !== r.id; });
-          guardarTurno();
-          actualizarEncabezado();
-          pintar();
-        });
-        der.appendChild(c); der.appendChild(del);
-        row.appendChild(izq); row.appendChild(der);
-        cont.appendChild(row);
-      });
-      if(t.registros.length > 6){
-        var mas = document.createElement("div");
-        mas.style.cssText = "font-size:.7rem;color:var(--muted-2);padding-top:4px;";
-        mas.textContent = "+" + (t.registros.length - 6) + " registro(s) más";
-        cont.appendChild(mas);
-      }
-    }
-    pintar();
-  }
-
-  function crearTarjetaTurno(maquina){
-    var t = obtenerTurno(maquina.id);
+  function crearTarjetaTurno(maquina, inst){
+    inst = inst || 1;
+    var t = obtenerTurno(maquina.id, inst);
+    var clave = claveTarjeta(maquina, inst);
     var card = document.createElement("div");
     card.className = "item-card";
-    card.dataset.maquinaId = maquina.id;
+    card.dataset.maquinaId = clave;
     card.style.flexDirection = "column";
     card.style.alignItems = "stretch";
     card.style.padding = "12px 14px";
 
-    var expandido = !!expandidos[maquina.id];
+    var expandido = !!expandidos[clave];
 
     var header = document.createElement("div");
     header.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;";
@@ -3155,7 +2849,7 @@
     var nombreEl = document.createElement("div");
     nombreEl.className = "mono";
     nombreEl.style.cssText = "font-weight:600;font-size:.92rem;color:var(--text);";
-    nombreEl.textContent = maquina.nombre + (maquina.multiOp ? "  ·  MULTI-OP" : "");
+    nombreEl.textContent = nombreTarjeta(maquina, inst);
     var subEl = document.createElement("div");
     subEl.style.cssText = "font-size:.74rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
     izq.appendChild(nombreEl);
@@ -3180,8 +2874,6 @@
       totalBadge.textContent = totalProducido(t) + " u";
       if(t.motivoParada){
         subEl.textContent = "⏸ " + t.motivoParada;
-      } else if(maquina.multiOp){
-        subEl.textContent = (t.ops && t.ops.length) ? "MULTI-OP: " + t.ops.map(function(l){ return l.op; }).join(", ") : "MULTI-OP · sin OP asignada";
       } else if(t.op){
         var match = buscarEnCatalogo(t.op);
         var descTxtEncabezado = match ? resolverModelo(match, t.modeloIdx).descripcion : "";
@@ -3193,12 +2885,12 @@
     actualizarEncabezado();
 
     header.addEventListener("click", function(){
-      var yaExpandido = !!expandidos[maquina.id];
+      var yaExpandido = !!expandidos[clave];
       expandidos = {};
-      if(!yaExpandido) expandidos[maquina.id] = true;
+      if(!yaExpandido) expandidos[clave] = true;
       renderProduccion();
       if(!yaExpandido){
-        var el = produccionContainer.querySelector('[data-maquina-id="'+maquina.id+'"]');
+        var el = produccionContainer.querySelector('[data-maquina-id="'+clave+'"]');
         if(el) el.scrollIntoView({behavior:"smooth", block:"nearest"});
       }
     });
@@ -3267,11 +2959,6 @@
       guardarTurno();
     });
     detalle.appendChild(observacionesInput);
-
-    if(maquina.multiOp){
-      construirDetalleMultiOp(maquina, t, detalle, actualizarEncabezado, function(){ observacionesInput.value = ""; });
-      return card;
-    }
 
     var opContainer = document.createElement("div");
     detalle.appendChild(opContainer);
@@ -3679,6 +3366,23 @@
     detalle.appendChild(registrarWrap);
     detalle.appendChild(detalleRegistros);
 
+    if(maquina.multiOp && turnosDeMaquina(maquina).length > 1){
+      var btnQuitarTarjeta = document.createElement("button");
+      btnQuitarTarjeta.type = "button";
+      btnQuitarTarjeta.textContent = "✕ Quitar esta tarjeta (" + nombreTarjeta(maquina, inst) + ")";
+      btnQuitarTarjeta.style.cssText = "margin-top:12px;background:none;border:1px solid var(--red);color:var(--red);padding:7px;border-radius:6px;font-size:.75rem;font-weight:600;cursor:pointer;width:100%;";
+      btnQuitarTarjeta.addEventListener("click", function(){
+        var n = (t.registros || []).length;
+        if(!confirm("¿Quitar la tarjeta " + nombreTarjeta(maquina, inst) + "?" + (n ? "\n\nTiene " + n + " registro(s) de producción que se ELIMINARÁN." : ""))) return;
+        turno = turno.filter(function(x){ return x !== t; });
+        turno.forEach(function(x){ if(x.maquinaId === maquina.id && (x.instancia || 1) > inst) x.instancia = (x.instancia || 1) - 1; });
+        expandidos = {};
+        guardarTurno();
+        renderProduccion();
+      });
+      detalle.appendChild(btnQuitarTarjeta);
+    }
+
     return card;
   }
 
@@ -3695,7 +3399,26 @@
         produccionContainer.appendChild(sep);
       }
       areaAnterior = areaActual;
-      produccionContainer.appendChild(crearTarjetaTurno(m));
+      if(m.multiOp){
+        turnosDeMaquina(m).forEach(function(t){ produccionContainer.appendChild(crearTarjetaTurno(m, t.instancia || 1)); });
+        var btnMas = document.createElement("button");
+        btnMas.type = "button";
+        btnMas.textContent = "+ Agregar OP a " + m.nombre + " (nueva tarjeta)";
+        btnMas.style.cssText = "background:var(--panel-alt);color:var(--amber-text);border:1px dashed var(--amber);padding:10px;border-radius:10px;font-size:.8rem;font-weight:700;cursor:pointer;";
+        btnMas.addEventListener("click", function(){
+          var sig = turnosDeMaquina(m).reduce(function(mx, x){ return Math.max(mx, x.instancia || 1); }, 0) + 1;
+          obtenerTurno(m.id, sig);
+          expandidos = {};
+          expandidos[claveTarjeta(m, sig)] = true;
+          guardarTurno();
+          renderProduccion();
+          var el = produccionContainer.querySelector('[data-maquina-id="' + claveTarjeta(m, sig) + '"]');
+          if(el) el.scrollIntoView({behavior:"smooth", block:"nearest"});
+        });
+        produccionContainer.appendChild(btnMas);
+      } else {
+        produccionContainer.appendChild(crearTarjetaTurno(m, 1));
+      }
     });
     var totalGeneral = turno.reduce(function(acc,t){ return acc + totalProducido(t); }, 0);
     var digitos = String(totalGeneral).padStart(6,"0").split("");
@@ -3711,9 +3434,11 @@
   $("btnGuardarPlantilla").addEventListener("click", function(){
     var activas = ordenarPorNombre(maquinas.filter(function(m){ return m.activa; }));
     if(activas.length === 0){ mostrarToast("error","No hay máquinas activas para guardar"); return; }
-    plantilla = activas.map(function(m){
-      var t = obtenerTurno(m.id);
-      return { maquinaId: m.id, op: t.op, objetivo: t.objetivo, ops: m.multiOp ? (t.ops || []) : [] };
+    plantilla = [];
+    activas.forEach(function(m){
+      turnosDeMaquina(m).forEach(function(t){
+        plantilla.push({ maquinaId: m.id, instancia: t.instancia || 1, op: t.op, objetivo: t.objetivo });
+      });
     });
     guardarPlantilla();
     mostrarToast("ok","Plantilla guardada (" + plantilla.length + " máquina(s))");
@@ -3726,13 +3451,9 @@
       var m = maquinas.find(function(x){ return x.id === p.maquinaId; });
       if(!m) return;
       m.activa = true;
-      var t = obtenerTurno(m.id);
+      var t = obtenerTurno(m.id, p.instancia || 1);
       t.op = p.op;
       t.objetivo = p.objetivo;
-      if(m.multiOp){
-        t.ops = (p.ops || []).map(function(l){ return { op: l.op, modeloIdx: l.modeloIdx, pliego: l.pliego || "", cantTxt: "", mermaTxt: "" }; });
-        if(t.ops.length) t.op = t.ops[0].op;
-      }
       aplicadas++;
     });
     guardarMaquinas();
@@ -3869,10 +3590,17 @@
 
   // ---------- reporte WhatsApp ----------
   function bloqueMaquinaWsp(m){
-    var t = obtenerTurno(m.id);
+    var res = { lineas: [], total: 0, merma: 0 };
+    turnosDeMaquina(m).forEach(function(t){
+      var b = bloqueTurnoWsp(m, t, nombreTarjeta(m, t.instancia || 1));
+      res.lineas = res.lineas.concat(b.lineas); res.total += b.total; res.merma += b.merma;
+    });
+    return res;
+  }
+  function bloqueTurnoWsp(m, t, nombreMostrar){
     var lineas = [];
     if(t.motivoParada){
-      lineas.push("▪️ *" + m.nombre + "*  ⏸ _" + t.motivoParada + "_" + (t.observaciones ? "\n     📝 " + t.observaciones : ""));
+      lineas.push("▪️ *" + nombreMostrar + "*  ⏸ _" + t.motivoParada + "_" + (t.observaciones ? "\n     📝 " + t.observaciones : ""));
       return { lineas: lineas, total: 0, merma: 0 };
     }
     if(!t.registros || t.registros.length === 0){
@@ -3882,7 +3610,7 @@
         var dt = mt ? resolverModelo(mt, o.modeloIdx).descripcion : "";
         return "     " + o.op + (dt ? " — " + dt : "");
       }).join("\n") : "     sin OP asignada";
-      lineas.push("▪️ *" + m.nombre + "*  ·  0 u"
+      lineas.push("▪️ *" + nombreMostrar + "*  ·  0 u"
         + "\n" + opLineas
         + (t.observaciones ? "\n     📝 " + t.observaciones : ""));
       return { lineas: lineas, total: 0, merma: 0 };
@@ -3926,7 +3654,7 @@
       detalle.push("     " + o.op + (descActual ? " — " + descActual : "") + "  *0 u*");
     });
     if(t.observaciones) detalle.push("     📝 (pendiente) " + t.observaciones);
-    lineas.push("▪️ *" + m.nombre + "*  ·  " + totalMaquina + " u" + (mermaMaquina > 0 ? " (merma " + mermaMaquina + ")" : ""));
+    lineas.push("▪️ *" + nombreMostrar + "*  ·  " + totalMaquina + " u" + (mermaMaquina > 0 ? " (merma " + mermaMaquina + ")" : ""));
     lineas = lineas.concat(detalle);
     return { lineas: lineas, total: totalMaquina, merma: mermaMaquina };
   }
@@ -3972,22 +3700,22 @@
     var l = ["*ACTIVACIÓN DE MÁQUINAS* - " + formatearFechaTurno() + (metaTurno.tipo ? " - " + etiquetaTurno() : "")];
     if(filas.length === 0){ l.push("No hay máquinas activas."); return l.join("\n"); }
     function pl(n, uno, varios){ return n + " " + (n === 1 ? uno : varios); }
-    var paradasTotal = filas.filter(function(f){ return f.parada; }).length;
+    var cnt = contarMaquinasAct(filas);
     AREAS_ORDEN.forEach(function(areaDef){
       var de = filas.filter(function(f){ return (f.area||"") === areaDef.key; });
       if(de.length === 0) return;
-      var pa = de.filter(function(f){ return f.parada; }).length;
-      l.push("*" + areaDef.label + "* (" + pl(de.length - pa, "activa", "activas") + (pa ? ", " + pl(pa, "parada", "paradas") : "") + ")");
+      var c = contarMaquinasAct(de);
+      l.push("*" + areaDef.label + "* (" + pl(c.total - c.paradas, "activa", "activas") + (c.paradas ? ", " + pl(c.paradas, "parada", "paradas") : "") + ")");
       de.forEach(function(f){
         var partes = [];
         if(f.parada) partes.push("PARADA" + (f.motivo ? " (" + f.motivo + ")" : ""));
-        if(f.ops && f.ops.length) partes.push(f.ops.map(function(o){ return o.op + (o.producto ? " - " + o.producto : ""); }).join(" / "));
+        if(f.op) partes.push(f.op + (f.producto ? " - " + f.producto : ""));
         else if(!f.parada) partes.push("sin OP");
         if(f.observaciones) partes.push("Obs: " + f.observaciones);
         l.push("• *" + f.maquina + "*: " + partes.join(" - "));
       });
     });
-    l.push("*Total: " + pl(filas.length, "máquina", "máquinas") + " - " + pl(filas.length - paradasTotal, "activa", "activas") + " - " + pl(paradasTotal, "parada", "paradas") + "*");
+    l.push("*Total: " + pl(cnt.total, "máquina", "máquinas") + " - " + pl(cnt.total - cnt.paradas, "activa", "activas") + " - " + pl(cnt.paradas, "parada", "paradas") + "*");
     return l.join("\n");
   }
 
